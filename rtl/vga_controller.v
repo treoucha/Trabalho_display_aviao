@@ -37,6 +37,8 @@ module vga_controller(
     // ---------------------------------------------------
     // 2) Parâmetros de temporização 640x480@60Hz
     // ---------------------------------------------------
+    // Resolução fixa em 640x480; não há autodetecção nesta versão.
+    // A ligação VGA atual não disponibiliza DDC/EDID para consultar o monitor.
     localparam H_VISIVEL     = 640;
     localparam H_FRENTE      = 16;
     localparam H_SYNC        = 96;
