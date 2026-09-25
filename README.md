@@ -1,22 +1,32 @@
 # Display de avião
 
+O circuito atual desenha uma retícula branca com vão central sobre fundo preto,
+em uma saída VGA de 640×480. Os controles e demais símbolos descritos na
+especificação ainda não estão implementados.
+
 ## Estrutura do projeto
 
 ```text
 .
 ├── README.md
 ├── constraints/
-│   └── nosso_xdc.xdc
+│   └── nexys_a7_reticula.xdc
 └── rtl/
-    ├── vga_controller.sv
-    └── vga_top.sv
+    ├── reticula_vga.v
+    ├── top_reticula.v
+    └── vga_controller.v
 ```
 
-- `rtl/`: módulos SystemVerilog. O módulo principal é `vga_top`.
+- `rtl/`: módulos Verilog. O módulo principal é `top_reticula`.
 - `constraints/`: restrições de pinos e clock da Nexys A7.
 
 No Vivado, adicione os arquivos de `rtl/` como fontes de projeto e
-`constraints/nosso_xdc.xdc` como arquivo de restrições.
+`constraints/nexys_a7_reticula.xdc` como arquivo de restrições. Defina `top_reticula` como módulo principal.
+Se estiver usando um projeto Vivado anterior, remova as referências a
+`vga_controller.sv`, `vga_top.sv` e `nosso_xdc.xdc` antes de adicionar os novos arquivos.
+
+O mapeamento JA está comentado no XDC como referência para a futura ligação do
+acelerômetro; esta versão usa apenas o clock e a saída VGA.
 
 ## Especificação do trabalho
 
