@@ -193,7 +193,7 @@ module mma8452_i2c #(
 
                         2'd0: begin
                             tx_data   <= 8'h0D;
-                            bit_index <= 3'd7;
+                            bit_index <= 3'd7; //teste
                             etapa     <= 2'd1;
 
                             state <= ST_TX_LOW;
