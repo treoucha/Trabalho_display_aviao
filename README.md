@@ -1,3 +1,25 @@
+# Display de avião
+
+## Estrutura do projeto
+
+```text
+.
+├── README.md
+├── constraints/
+│   └── nosso_xdc.xdc
+└── rtl/
+    ├── vga_controller.sv
+    └── vga_top.sv
+```
+
+- `rtl/`: módulos SystemVerilog. O módulo principal é `vga_top`.
+- `constraints/`: restrições de pinos e clock da Nexys A7.
+
+No Vivado, adicione os arquivos de `rtl/` como fontes de projeto e
+`constraints/nosso_xdc.xdc` como arquivo de restrições.
+
+## Especificação do trabalho
+
 Obejetivo:
 	-Tela VGA com reticulo central
 	-Horizonte artificial com deslocamento configuravel
