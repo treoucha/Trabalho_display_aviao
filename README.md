@@ -12,9 +12,9 @@ especificação ainda não estão implementados.
 ├── constraints/
 │   └── nexys_a7_reticula.xdc
 └── rtl/
-    ├── reticula_vga.v
-    ├── top_reticula.v
-    └── vga_controller.v
+    ├── reticula_vga.sv
+    ├── top_reticula.sv
+    └── vga_controller.sv
 ```
 
 - `rtl/`: módulos Verilog. O módulo principal é `top_reticula`.

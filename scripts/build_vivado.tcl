@@ -1,6 +1,6 @@
 set root [file normalize [file join [file dirname [info script]] ..]]
 create_project reticula [file join $root build vivado] -part xc7a100tcsg324-1 -force
-add_files [glob [file join $root rtl *.v]]
+add_files [glob [file join $root rtl *.sv]]
 add_files -fileset constrs_1 [file join $root constraints nexys_a7_reticula.xdc]
 set_property top top_reticula [current_fileset]
 update_compile_order -fileset sources_1
