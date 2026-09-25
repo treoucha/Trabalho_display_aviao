@@ -9,6 +9,9 @@
 set_property -dict { PACKAGE_PIN E3  IOSTANDARD LVCMOS33 } [get_ports { clk }]; #Sch=clk100mhz
 create_clock -add -name sys_clk_pin -period 10.00 -waveform {0 5} [get_ports { clk }];
 
+# Clock de pixel gerado pelo divisor por quatro do controlador.
+create_generated_clock -name pixel_clk -source [get_ports clk] -divide_by 4 [get_pins u_vga/clk25_reg/Q]
+
 ## Conector VGA
 set_property -dict { PACKAGE_PIN A3  IOSTANDARD LVCMOS33 } [get_ports { VGA_R[0] }]; #Sch=vga_r[0]
 set_property -dict { PACKAGE_PIN B4  IOSTANDARD LVCMOS33 } [get_ports { VGA_R[1] }]; #Sch=vga_r[1]

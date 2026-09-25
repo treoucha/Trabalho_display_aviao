@@ -28,6 +28,32 @@ Se estiver usando um projeto Vivado anterior, remova as referências a
 O mapeamento JA está comentado no XDC como referência para a futura ligação do
 acelerômetro; esta versão usa apenas o clock e a saída VGA.
 
+## Gerar o projeto no Vivado
+
+Para a Nexys A7-100T, execute na raiz do repositório, com o Vivado no PATH:
+
+```sh
+vivado -mode batch -source scripts/build_vivado.tcl
+```
+
+O projeto fica em `build/vivado/reticula.xpr`. O bitstream fica em
+`build/vivado/reticula.runs/impl_1/top_reticula.bit`, e os relatórios de timing,
+utilização e DRC ficam em `build/`.
+
+Com a placa ligada e conectada por USB, programe a FPGA com:
+
+```sh
+vivado -mode batch -source scripts/program_board.tcl
+```
+
+A programação é volátil: ao desligar a placa, será necessário programá-la novamente.
+No monitor VGA, confira a retícula branca centralizada, com vão central e fundo preto.
+
+A implementação foi executada no Vivado 2026.1. O clock interno de pixel está
+declarado em 25 MHz no XDC. Os relatórios ainda apontam ausência de delays de saída
+VGA e das propriedades de tensão de configuração; a análise interna de timing não
+substitui a validação da imagem no monitor.
+
 ## Especificação do trabalho
 
 Obejetivo:
