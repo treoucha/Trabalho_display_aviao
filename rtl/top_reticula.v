@@ -4,6 +4,7 @@
 // via porta VGA do Nexys A7.
 // =========================================================
 
+// TODO: Validar a retícula no monitor e registrar utilização de recursos e timing no Vivado.
 module top_reticula(
     input  wire        clk,      // CLK100MHZ do board
     output wire [3:0]  VGA_R,
@@ -13,6 +14,8 @@ module top_reticula(
     output wire         VGA_VS
 );
 
+    // TODO: Adicionar controles por switches/botões com sincronização das entradas.
+    // TODO: Depois do VGA, integrar a leitura I2C do acelerômetro para controlar o horizonte.
     wire [9:0] pixel_x;
     wire [9:0] pixel_y;
     wire       video_on;
@@ -29,6 +32,8 @@ module top_reticula(
         .video_on   (video_on)
     );
 
+    // TODO: Criar módulos para horizonte ajustável, altitude, direção e marcador de alvo.
+    // TODO: Manter os símbolos na área visível e atualizar os controles entre quadros.
     reticula_vga #(
         .ESPESSURA(2),
         .TAMANHO(40),
@@ -43,6 +48,8 @@ module top_reticula(
     assign VGA_HS = hsync;
     assign VGA_VS = vsync;
 
+    // TODO: Criar compositor com prioridade de desenho e modos normal/declutter.
+    // TODO: Como adicional, implementar o travamento do marcador de alvo.
     // Retícula branca sobre fundo preto
     assign VGA_R = retic ? 4'hF : 4'h0;
     assign VGA_G = retic ? 4'hF : 4'h0;

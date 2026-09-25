@@ -27,6 +27,8 @@ module reticula_vga #(
     wire linha_vertical;
     wire fora_do_vao;
 
+    // TODO: Ajustar os limites para ESPESSURA=2 desenhar duas linhas de pixels, não três.
+    // TODO: Testar espessuras pares/ímpares, vão central e bloqueio fora da área visível.
     // Linha horizontal: pixel_y perto do centro, pixel_x dentro do comprimento do braço
     assign linha_horizontal =
         (pixel_y >= CENTRO_Y - ESPESSURA/2) &&

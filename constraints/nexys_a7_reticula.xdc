@@ -28,6 +28,8 @@ set_property -dict { PACKAGE_PIN D8  IOSTANDARD LVCMOS33 } [get_ports { VGA_B[3]
 set_property -dict { PACKAGE_PIN B11 IOSTANDARD LVCMOS33 } [get_ports { VGA_HS }]; #Sch=vga_hs
 set_property -dict { PACKAGE_PIN B12 IOSTANDARD LVCMOS33 } [get_ports { VGA_VS }]; #Sch=vga_vs
 
+# TODO: Mapear switches/botões quando as entradas forem adicionadas ao módulo principal.
+# TODO: Definir os pinos JA de SDA/SCL conforme os jumpers e mapear as portas I2C.
 # Referência JA para a futura ligação do acelerômetro.
 # Ativar apenas SDA e SCL após definir a ligação e as portas do módulo.
 # set_property -dict { PACKAGE_PIN C17   IOSTANDARD LVCMOS33 } [get_ports { JA[1] }]; #IO_L20N_T3_A19_15 Sch=ja[1]

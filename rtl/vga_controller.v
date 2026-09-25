@@ -21,6 +21,7 @@ module vga_controller(
     //     dos laboratórios; se precisar de clock mais limpo,
     //     use o Clocking Wizard do Vivado em vez disso)
     // ---------------------------------------------------
+    // TODO: Revisar a geração de clk25 e suas constraints de timing no Vivado.
     reg [1:0] div_cnt = 0;
     reg       clk25    = 0;
 
@@ -66,6 +67,8 @@ module vga_controller(
         end
     end
 
+    // TODO: Alinhar hsync/vsync com pixel_x, pixel_y e video_on; hoje ficam um pixel atrasados.
+    // TODO: Adicionar testbench ao projeto para conferir um quadro completo e esse alinhamento.
     // Sincronismos são ativos em nível baixo nesse padrão de timing
     always @(posedge clk25) begin
         hsync <= ~((h_cont >= (H_VISIVEL + H_FRENTE)) &&
