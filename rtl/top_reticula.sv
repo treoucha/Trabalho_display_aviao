@@ -5,6 +5,8 @@
 
 module top_reticula (
     input  logic       clk,
+    input  logic [2:0] btn_rgb,  // BTNL=R, BTNC=G, BTNR=B
+    input  logic [13:0] sw,     // [11:0]=RGB, [12]=sobe, [13]=desce
 
     inout  wire        i2c_sda,
     inout  wire        i2c_scl,
@@ -21,12 +23,73 @@ module top_reticula (
     logic [9:0] pixel_y;
     logic       video_on;
 
+    wire pixel_clk;
+    wire [11:0] cor_reticula;
+
+    controle_cor u_cor (
+        .clk (pixel_clk),
+        .btn_rgb (btn_rgb),
+        .sw (sw[11:0]),
+        .atualizar ((pixel_x == 0) && (pixel_y == 480)),
+        .rgb (cor_reticula)
+    );
+
+    (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_meta = '0;
+    (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_sync = '0;
+    wire [9:0] horizonte_y;
+    wire signed [9:0] roll_q8;
+    wire [9:0] velocidade_kt;
+    wire [16:0] altitude_ft;
+    logic signed [10:0] pitch_px_entrada;
+
+    always_ff @(posedge clk) begin
+        horizonte_meta <= sw[13:12];
+        horizonte_sync <= horizonte_meta;
+    end
+
+    // Fonte simulada a 100 MHz. Substituir por dados processados nesse domínio.
+    always_comb begin
+        case (horizonte_sync)
+            2'b01: pitch_px_entrada = -11'sd40;
+            2'b10: pitch_px_entrada = 11'sd40;
+            default: pitch_px_entrada = 11'sd0;
+        endcase
+    end
+    wire [47:0] amostra_pixel;
+    wire amostra_valida;
+    wire entrada_pronta;
+    // Ordem do barramento: velocidade(10), altitude(17), pitch(11), roll(10).
+    entrada_hud u_entrada (
+        .clk_origem(clk), .clk_destino(pixel_clk),
+        .valido(1'b1),
+        .dados({10'd280, 17'd36000, pitch_px_entrada, 10'sd0}),
+        .pronto(entrada_pronta),
+        .valido_destino(amostra_valida), .dados_destino(amostra_pixel)
+    );
+    dados_hud u_dados (
+        .clk(pixel_clk),
+        .atualizar_quadro((pixel_x == 0) && (pixel_y == 480)),
+        .dados_validos(amostra_valida),
+        .velocidade_kt_in(amostra_pixel[47:38]), .altitude_ft_in(amostra_pixel[37:21]),
+        .pitch_px_in($signed(amostra_pixel[20:10])), .roll_q8_in($signed(amostra_pixel[9:0])),
+        .velocidade_kt(velocidade_kt), .altitude_ft(altitude_ft),
+        .horizonte_y(horizonte_y), .roll_q8(roll_q8)
+    );
+
+    wire numeros;
+    numeros_hud u_numeros (
+        .pixel_x(pixel_x), .pixel_y(pixel_y), .video_on(video_on),
+        .velocidade_kt(velocidade_kt), .altitude_ft(altitude_ft),
+        .numeros_on(numeros)
+    );
+
     logic hsync;
     logic vsync;
 
     logic retic;
     logic horizonte;
     logic altitude;
+    logic velocidade;
     logic direcao;
     logic alvo;
 
@@ -51,7 +114,7 @@ module top_reticula (
 
     vga_controller u_vga (
         .clk_100mhz (clk),
-        .pixel_clk  (),
+        .pixel_clk  (pixel_clk),
         .hsync      (hsync),
         .vsync      (vsync),
         .pixel_x    (pixel_x),
@@ -79,12 +142,15 @@ module top_reticula (
     // -----------------------------------------------------
 
     simbologia_vga u_simbologia (
+        .horizonte_y  (horizonte_y),
+        .roll_q8      (roll_q8),
         .pixel_x      (pixel_x),
         .pixel_y      (pixel_y),
         .video_on     (video_on),
 
         .horizonte_on (horizonte),
         .altitude_on  (altitude),
+        .velocidade_on (velocidade),
         .direcao_on   (direcao),
         .alvo_on      (alvo)
     );
@@ -115,19 +181,19 @@ module top_reticula (
     // -----------------------------------------------------
 
     assign VGA_R =
-        retic                         ? 4'hF :
+        retic                         ? cor_reticula[3:0] :
         alvo                          ? 4'hF :
         (sensor_status && !sensor_ok) ? 4'hF :
                                         4'h0;
 
     assign VGA_G =
-        retic                              ? 4'hF :
-        (horizonte || altitude || direcao) ? 4'hF :
+        retic                              ? cor_reticula[7:4] :
+        (horizonte || altitude || velocidade || direcao || numeros) ? 4'hF :
         (sensor_status && sensor_ok)        ? 4'hF :
                                              4'h0;
 
     assign VGA_B =
-        retic ? 4'hF :
+        retic ? cor_reticula[11:8] :
                 4'h0;
 
 endmodule

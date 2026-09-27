@@ -1,58 +1,116 @@
 # Display de avião
 
-O circuito atual desenha uma retícula branca com vão central sobre fundo preto,
-em uma saída VGA de 640×480. Os controles e demais símbolos descritos na
-especificação ainda não estão implementados.
+Display VGA 640×480 com retículo central, horizonte com três posições e escalas estáticas, marcador
+de alvo e indicador de identificação do sensor MMA8452Q. A imagem é gerada por
+coordenadas, sem framebuffer. O clock de pixel é 25 MHz e a taxa é aproximadamente
+59,52 Hz. SW12/SW13 deslocam o horizonte; os demais símbolos permanecem fixos.
 
-## Estrutura do projeto
+## Módulos
 
-```text
-.
-├── README.md
-├── constraints/
-│   └── nexys_a7_reticula.xdc
-└── rtl/
-    ├── reticula_vga.sv
-    ├── top_reticula.sv
-    └── vga_controller.sv
+- `rtl/top_reticula.sv`: integra os módulos e compõe RGB.
+- `rtl/vga_controller.sv`: divisor de clock, coordenadas e sincronismos.
+- `rtl/reticula_vga.sv`: máscara do retículo com espessura e vão configuráveis.
+- `rtl/controle_cor.sv`: sincronização, filtro dos botões e cor do retículo.
+- `rtl/simbologia_vga.sv`: horizonte deslocável, escalas de velocidade/altitude, direção e alvo estáticos.
+- `rtl/entrada_hud.sv`: transfere amostras de 100 para 25 MHz com confirmação.
+- `rtl/dados_hud.sv`: recebe dados processados e aplica o conjunto entre quadros.
+- `rtl/numeros_hud.sv`: desenha números e unidades com fonte 3x5 ampliada.
+- `rtl/mma8452_i2c.sv`: lê WHO_AM_I; não fornece atitude da aeronave.
+- `constraints/nexys_a7_reticula.xdc`: clock, VGA, JA e controles da Nexys A7.
+
+## Horizonte simulado
+
+SW12 ligado sozinho posiciona o horizonte 40 pixels acima (y=200).
+SW13 ligado sozinho posiciona 40 pixels abaixo (y=280).
+Ambos desligados ou ambos ligados mantêm y=240. O retículo permanece fixo.
+As entradas passam por dois estágios de sincronização e a posição é aplicada
+no blanking vertical. São três posições fixas, sem movimento contínuo nem
+leitura de atitude do sensor. SW0..SW11 continuam controlando RGB.
+
+As marcas de atitude acompanham o horizonte: duas linhas contínuas acima e duas
+tracejadas abaixo, a 40 e 80 pixels, com espessura de 2 pixels e vão central.
+São referências visuais de atitude simulada, ainda sem escala angular calibrada
+ou rótulos em graus. O retículo e as escalas laterais não se deslocam.
+
+## Escalas laterais
+
+A escala de velocidade fica à esquerda (x=80), espelhada em relação à altitude
+à direita (x=560). As duas têm oito marcas, espaçadas a cada 40 pixels, entre
+y=100 e y=380. As marcas apontam para o centro da tela. São verdes e têm rótulos numéricos, com
+passos de 20 KT e 200 FT. Os valores atuais iniciais são 280 KT e 36000 FT,
+mostrados abaixo das barras. Esses valores são simulados.
+
+A interface aceita velocidade, altitude, deslocamento de pitch e inclinação de
+roll processados. Consulte [formatos e ligação futura do sensor](docs/entradas_hud.md).
+A transferência entre clocks já está implementada. A calibração e a conversão
+dos eixos brutos para atitude ainda dependem da montagem do sensor.
+
+## Cor do retículo
+
+| Controle | Função |
+| --- | --- |
+| BTNL / `btn_rgb[0]` | Alterna o canal vermelho |
+| BTNC / `btn_rgb[1]` | Alterna o canal verde |
+| BTNR / `btn_rgb[2]` | Alterna o canal azul |
+| SW3..SW0 | Intensidade R, de 0 a 15 |
+| SW7..SW4 | Intensidade G, de 0 a 15 |
+| SW11..SW8 | Intensidade B, de 0 a 15 |
+
+Após programar, somente G está habilitado. Ligue SW7..SW4 para ver o retículo
+verde. Cada pressão estável por 10 ms alterna um canal; manter pressionado não
+repete. É possível misturar canais ou desligar todos. Switches em zero apagam o
+canal correspondente. A cor é aplicada no início do blanking vertical. Os outros
+símbolos e o indicador do sensor conservam as cores existentes.
+
+Os 12 switches são sincronizados por bit. Mover vários simultaneamente pode
+produzir um valor intermediário por um quadro; não há protocolo de atualização
+atômica nem debounce dos switches.
+
+## Testar e gerar no Vivado
+
+Na raiz do repositório, com Icarus Verilog instalado:
+
+```sh
+scripts/test.sh
 ```
 
-- `rtl/`: módulos Verilog. O módulo principal é `top_reticula`.
-- `constraints/`: restrições de pinos e clock da Nexys A7.
+Os testes verificam geometria, controles e um quadro VGA completo. A imagem de
+simulação fica em `build/hud.ppm`.
 
-No Vivado, adicione os arquivos de `rtl/` como fontes de projeto e
-`constraints/nexys_a7_reticula.xdc` como arquivo de restrições. Defina `top_reticula` como módulo principal.
-Se estiver usando um projeto Vivado anterior, remova as referências a
-`vga_controller.sv`, `vga_top.sv` e `nosso_xdc.xdc` antes de adicionar os novos arquivos.
-
-O mapeamento JA está comentado no XDC como referência para a futura ligação do
-acelerômetro; esta versão usa apenas o clock e a saída VGA.
-
-## Gerar o projeto no Vivado
-
-Para a Nexys A7-100T, execute na raiz do repositório, com o Vivado no PATH:
+Com Vivado no PATH, para **Nexys A7-100T / xc7a100tcsg324-1**:
 
 ```sh
 vivado -mode batch -source scripts/build_vivado.tcl
 ```
 
-O projeto fica em `build/vivado/reticula.xpr`. O bitstream fica em
-`build/vivado/reticula.runs/impl_1/top_reticula.bit`, e os relatórios de timing,
-utilização e DRC ficam em `build/`.
+O projeto fica em `build/vivado/reticula.xpr`; o bitstream fica em
+`build/vivado/reticula.runs/impl_1/top_reticula.bit`. Também são gerados
+`build/timing_summary.rpt`, `build/utilization.rpt` e `build/drc.rpt`.
+Para projeto manual, adicione todos os `rtl/*.sv`, o XDC e defina `top_reticula`
+como módulo principal. Remova apenas fontes antigas duplicadas, não os módulos `.sv` atuais.
 
-Com a placa ligada e conectada por USB, programe a FPGA com:
+Confira o modelo físico antes de programar. O script não atende à A7-50T sem
+ajustar o dispositivo. O mapeamento foi conferido no
+[Master XDC da Digilent](https://github.com/Digilent/digilent-xdc/blob/master/Nexys-A7-100T-Master.xdc).
+SW8/SW9 usam LVCMOS18; os outros controles usam LVCMOS33.
+O I²C já usa SDA em JA1/C17 e SCL em JA7/D17. A ligação, alimentação e pull-ups
+do sensor externo precisam ser conferidos na montagem.
+
+Com a placa correta ligada por USB:
 
 ```sh
 vivado -mode batch -source scripts/program_board.tcl
 ```
 
-A programação é volátil: ao desligar a placa, será necessário programá-la novamente.
-No monitor VGA, confira a retícula branca centralizada, com vão central e fundo preto.
+A programação é volátil. Verifique estabilidade da imagem, vão central, cores,
+intensidades e ausência de cor fora da área ativa. A nova versão não foi gravada
+na placa durante esta revisão.
 
-A implementação foi executada no Vivado 2026.1. O clock interno de pixel está
-declarado em 25 MHz no XDC. Os relatórios ainda apontam ausência de delays de saída
-VGA e das propriedades de tensão de configuração; a análise interna de timing não
-substitui a validação da imagem no monitor.
+Em 27/09/2026, a simulação e a implementação no Vivado 2026.1 passaram, com
+217 LUTs, 170 flip-flops, zero latches e WNS de +4,391 ns. Permanecem avisos de
+configuração de tensão, buffer de SCL e atrasos externos não especificados.
+Isso não equivale à validação elétrica completa da interface.
+Consulte [a auditoria e os resultados](docs/auditoria.md).
 
 ## Especificação do trabalho
 

@@ -27,15 +27,16 @@ module reticula_vga #(
 
     always_comb begin
 
+        // Limite superior exclusivo: largura exata para espessuras pares e ímpares.
         linha_horizontal =
             (pixel_y >= CENTRO_Y - ESPESSURA / 2) &&
-            (pixel_y <= CENTRO_Y + ESPESSURA / 2) &&
+            (pixel_y < CENTRO_Y - ESPESSURA / 2 + ESPESSURA) &&
             (pixel_x >= CENTRO_X - TAMANHO) &&
             (pixel_x <= CENTRO_X + TAMANHO);
 
         linha_vertical =
             (pixel_x >= CENTRO_X - ESPESSURA / 2) &&
-            (pixel_x <= CENTRO_X + ESPESSURA / 2) &&
+            (pixel_x < CENTRO_X - ESPESSURA / 2 + ESPESSURA) &&
             (pixel_y >= CENTRO_Y - TAMANHO) &&
             (pixel_y <= CENTRO_Y + TAMANHO);
 

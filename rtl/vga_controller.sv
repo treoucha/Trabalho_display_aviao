@@ -1,6 +1,6 @@
 // =========================================================
 // vga_controller.sv
-// Gera sincronismo VGA 640x480 @ 60 Hz
+// Gera sincronismo VGA 640x480 @ 59,52 Hz
 // Clock de entrada: 100 MHz
 // Clock de pixel: 25 MHz
 // =========================================================
@@ -36,7 +36,7 @@ module vga_controller (
     assign pixel_clk = clk25;
 
     // -----------------------------------------------------
-    // VGA 640x480 @ 60 Hz
+    // VGA 640x480 @ 59,52 Hz
     // -----------------------------------------------------
 
     localparam int H_VISIVEL = 640;
@@ -77,13 +77,13 @@ module vga_controller (
     // Ativo em nível baixo
     // -----------------------------------------------------
 
-    always_ff @(posedge clk25) begin
-        hsync <= ~(
+    always_comb begin
+        hsync = ~(
             (h_cont >= H_VISIVEL + H_FRENTE) &&
             (h_cont <  H_VISIVEL + H_FRENTE + H_SYNC)
         );
 
-        vsync <= ~(
+        vsync = ~(
             (v_cont >= V_VISIVEL + V_FRENTE) &&
             (v_cont <  V_VISIVEL + V_FRENTE + V_SYNC)
         );

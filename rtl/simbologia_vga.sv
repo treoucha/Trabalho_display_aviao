@@ -8,18 +8,30 @@ module simbologia_vga (
     input  logic [9:0] pixel_x,
     input  logic [9:0] pixel_y,
     input  logic       video_on,
+    input  logic [9:0] horizonte_y, // Centro limitado a 160..320.
+    input  logic signed [9:0] roll_q8, // Inclinação: pixels por 256 pixels em X.
 
     output logic       horizonte_on,
     output logic       altitude_on,
     output logic       direcao_on,
-    output logic       alvo_on
+    output logic       alvo_on,
+    output logic       velocidade_on
 );
 
     logic horizonte_esq;
     logic horizonte_dir;
+    logic marcas_superiores;
+    logic marcas_inferiores;
+    logic faixa_marcas;
+    logic tracos_marcas;
+    logic signed [21:0] distancia_horizonte;
+    logic signed [21:0] deslocamento_roll;
 
     logic altitude_barra;
     logic altitude_marcas;
+    logic graduacao_y;
+    logic velocidade_barra;
+    logic velocidade_marcas;
 
     logic direcao_barra;
     logic direcao_marcas;
@@ -41,21 +53,42 @@ module simbologia_vga (
         // Horizonte artificial
         // -------------------------------------------------
 
+        // Inclinação linear da simbologia; escalas e retículo permanecem fixos.
+        deslocamento_roll = (($signed({12'b0, pixel_x}) - 22'sd320) * 22'(roll_q8)) >>> 8;
+        distancia_horizonte = $signed({12'b0, pixel_y}) - $signed({12'b0, horizonte_y}) - deslocamento_roll;
+
         horizonte_esq =
-            (pixel_y >= 239) &&
-            (pixel_y <= 241) &&
+            (distancia_horizonte >= -22'sd1) &&
+            (distancia_horizonte <= 22'sd1) &&
             (pixel_x >= 100) &&
             (pixel_x <= 300);
 
         horizonte_dir =
-            (pixel_y >= 239) &&
-            (pixel_y <= 241) &&
+            (distancia_horizonte >= -22'sd1) &&
+            (distancia_horizonte <= 22'sd1) &&
             (pixel_x >= 340) &&
             (pixel_x <= 540);
 
+        faixa_marcas = ((pixel_x >= 260) && (pixel_x <= 299)) ||
+                       ((pixel_x >= 340) && (pixel_x <= 379));
+        tracos_marcas = ((pixel_x >= 260) && (pixel_x <= 267)) ||
+                        ((pixel_x >= 276) && (pixel_x <= 283)) ||
+                        ((pixel_x >= 292) && (pixel_x <= 299)) ||
+                        ((pixel_x >= 340) && (pixel_x <= 347)) ||
+                        ((pixel_x >= 356) && (pixel_x <= 363)) ||
+                        ((pixel_x >= 372) && (pixel_x <= 379));
+
+        // Duas marcas contínuas acima e duas tracejadas abaixo, com 2 pixels.
+        marcas_superiores = faixa_marcas &&
+            (((distancia_horizonte >= -11'sd80) && (distancia_horizonte <= -11'sd79)) ||
+             ((distancia_horizonte >= -11'sd40) && (distancia_horizonte <= -11'sd39)));
+        marcas_inferiores = tracos_marcas &&
+            (((distancia_horizonte >= 11'sd40) && (distancia_horizonte <= 11'sd41)) ||
+             ((distancia_horizonte >= 11'sd80) && (distancia_horizonte <= 11'sd81)));
+
         horizonte_on =
             video_on &&
-            (horizonte_esq || horizonte_dir);
+            (horizonte_esq || horizonte_dir || marcas_superiores || marcas_inferiores);
 
         // -------------------------------------------------
         // Escala de altitude
@@ -67,9 +100,7 @@ module simbologia_vga (
             (pixel_y >= 100) &&
             (pixel_y <= 380);
 
-        altitude_marcas =
-            (pixel_x >= 548) &&
-            (pixel_x <= 561) &&
+        graduacao_y =
             (
                 ((pixel_y >=  99) && (pixel_y <= 101)) ||
                 ((pixel_y >= 139) && (pixel_y <= 141)) ||
@@ -81,9 +112,20 @@ module simbologia_vga (
                 ((pixel_y >= 379) && (pixel_y <= 381))
             );
 
+        altitude_marcas =
+            (pixel_x >= 548) && (pixel_x <= 561) && graduacao_y;
+
         altitude_on =
             video_on &&
             (altitude_barra || altitude_marcas);
+
+        // Escala de velocidade: espelho da altitude, com marcas para dentro.
+        velocidade_barra =
+            (pixel_x >= 79) && (pixel_x <= 81) &&
+            (pixel_y >= 100) && (pixel_y <= 380);
+        velocidade_marcas =
+            (pixel_x >= 79) && (pixel_x <= 92) && graduacao_y;
+        velocidade_on = video_on && (velocidade_barra || velocidade_marcas);
 
         // -------------------------------------------------
         // Indicador de direção
