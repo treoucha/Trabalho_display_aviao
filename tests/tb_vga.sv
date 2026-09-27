@@ -3,6 +3,7 @@ module tb_vga;
     logic clk=0;
     always #5 clk=~clk;
     tri1 sda,scl;
+    logic [15:0] sw;
     wire [3:0] r,g,b;
     wire hs,vs;
     top_reticula dut(clk,3'b0,14'h0FFF,sda,scl,r,g,b,hs,vs);

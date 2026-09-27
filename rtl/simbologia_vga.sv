@@ -22,8 +22,14 @@ module simbologia_vga (
     logic horizonte_dir;
     logic marcas_superiores;
     logic marcas_inferiores;
-    logic faixa_marcas;
-    logic tracos_marcas;
+
+    logic faixa_longa;
+    logic faixa_media;
+    logic faixa_curta;
+
+    logic tracos_longo;
+    logic tracos_medio;
+    logic tracos_curto;
     logic signed [21:0] distancia_horizonte;
     logic signed [21:0] deslocamento_roll;
 
@@ -69,22 +75,115 @@ module simbologia_vga (
             (pixel_x >= 340) &&
             (pixel_x <= 540);
 
-        faixa_marcas = ((pixel_x >= 260) && (pixel_x <= 299)) ||
-                       ((pixel_x >= 340) && (pixel_x <= 379));
-        tracos_marcas = ((pixel_x >= 260) && (pixel_x <= 267)) ||
-                        ((pixel_x >= 276) && (pixel_x <= 283)) ||
-                        ((pixel_x >= 292) && (pixel_x <= 299)) ||
-                        ((pixel_x >= 340) && (pixel_x <= 347)) ||
-                        ((pixel_x >= 356) && (pixel_x <= 363)) ||
-                        ((pixel_x >= 372) && (pixel_x <= 379));
+        // -------------------------------------------------
+// Escada de pitch
+//
+// Convenção visual temporária:
+// 40 pixels = 10 graus.
+//
+// Acima do horizonte: linhas contínuas.
+// Abaixo do horizonte: linhas tracejadas.
+// -------------------------------------------------
 
-        // Duas marcas contínuas acima e duas tracejadas abaixo, com 2 pixels.
-        marcas_superiores = faixa_marcas &&
-            (((distancia_horizonte >= -11'sd80) && (distancia_horizonte <= -11'sd79)) ||
-             ((distancia_horizonte >= -11'sd40) && (distancia_horizonte <= -11'sd39)));
-        marcas_inferiores = tracos_marcas &&
-            (((distancia_horizonte >= 11'sd40) && (distancia_horizonte <= 11'sd41)) ||
-             ((distancia_horizonte >= 11'sd80) && (distancia_horizonte <= 11'sd81)));
+// ±10° e ±20°
+faixa_longa =
+    ((pixel_x >= 250) && (pixel_x <= 300)) ||
+    ((pixel_x >= 340) && (pixel_x <= 390));
+
+// ±30°
+faixa_media =
+    ((pixel_x >= 265) && (pixel_x <= 300)) ||
+    ((pixel_x >= 340) && (pixel_x <= 375));
+
+// ±40°
+faixa_curta =
+    ((pixel_x >= 278) && (pixel_x <= 300)) ||
+    ((pixel_x >= 340) && (pixel_x <= 362));
+
+
+// Tracejado longo
+tracos_longo =
+    ((pixel_x >= 250) && (pixel_x <= 260)) ||
+    ((pixel_x >= 270) && (pixel_x <= 280)) ||
+    ((pixel_x >= 290) && (pixel_x <= 300)) ||
+
+    ((pixel_x >= 340) && (pixel_x <= 350)) ||
+    ((pixel_x >= 360) && (pixel_x <= 370)) ||
+    ((pixel_x >= 380) && (pixel_x <= 390));
+
+// Tracejado médio
+tracos_medio =
+    ((pixel_x >= 265) && (pixel_x <= 273)) ||
+    ((pixel_x >= 283) && (pixel_x <= 291)) ||
+    ((pixel_x >= 340) && (pixel_x <= 348)) ||
+    ((pixel_x >= 358) && (pixel_x <= 366));
+
+// Tracejado curto
+tracos_curto =
+    ((pixel_x >= 278) && (pixel_x <= 284)) ||
+    ((pixel_x >= 294) && (pixel_x <= 300)) ||
+    ((pixel_x >= 340) && (pixel_x <= 346)) ||
+    ((pixel_x >= 356) && (pixel_x <= 362));
+
+
+// Pitch positivo
+marcas_superiores =
+
+    // +10°
+    (faixa_longa &&
+        (distancia_horizonte >= -22'sd40) &&
+        (distancia_horizonte <= -22'sd39))
+
+    ||
+
+    // +20°
+    (faixa_longa &&
+        (distancia_horizonte >= -22'sd80) &&
+        (distancia_horizonte <= -22'sd79))
+
+    ||
+
+    // +30°
+    (faixa_media &&
+        (distancia_horizonte >= -22'sd120) &&
+        (distancia_horizonte <= -22'sd119))
+
+    ||
+
+    // +40°
+    (faixa_curta &&
+        (distancia_horizonte >= -22'sd160) &&
+        (distancia_horizonte <= -22'sd159));
+
+
+// Pitch negativo
+marcas_inferiores =
+
+    // -10°
+    (tracos_longo &&
+        (distancia_horizonte >= 22'sd40) &&
+        (distancia_horizonte <= 22'sd41))
+
+    ||
+
+    // -20°
+    (tracos_longo &&
+        (distancia_horizonte >= 22'sd80) &&
+        (distancia_horizonte <= 22'sd81))
+
+    ||
+
+    // -30°
+    (tracos_medio &&
+        (distancia_horizonte >= 22'sd120) &&
+        (distancia_horizonte <= 22'sd121))
+
+    ||
+
+    // -40°
+    (tracos_curto &&
+        (distancia_horizonte >= 22'sd160) &&
+        (distancia_horizonte <= 22'sd161));
 
         horizonte_on =
             video_on &&
