@@ -2,13 +2,13 @@
 module entrada_hud (
     input logic clk_origem, clk_destino,
     input logic valido,
-    input logic [47:0] dados,
+    input logic [56:0] dados,
     output wire pronto,
     output logic valido_destino = 1'b0,
-    output logic [47:0] dados_destino = '0
+    output logic [56:0] dados_destino = '0
 );
     // O barramento fica estável desde a requisição até a confirmação.
-    logic [47:0] retido = '0;
+    logic [56:0] retido = '0;
     logic pedido = 1'b0, confirmado = 1'b0;
     (* ASYNC_REG = "TRUE" *) logic pedido_meta = 0, pedido_sync = 0;
     (* ASYNC_REG = "TRUE" *) logic confirmado_meta = 0, confirmado_sync = 0;

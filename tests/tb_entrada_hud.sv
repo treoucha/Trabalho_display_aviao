@@ -3,12 +3,12 @@ module tb_entrada_hud;
     logic origem=0,destino=0,valido=0;
     always #5 origem=~origem;
     always #20 destino=~destino;
-    logic [47:0] dados=0;
+    logic [56:0] dados=0;
     wire pronto,validade;
-    wire [47:0] recebido;
+    wire [56:0] recebido;
     entrada_hud dut(origem,destino,valido,dados,pronto,validade,recebido);
     integer quantidade=0;
-    logic [47:0] esperado;
+    logic [56:0] esperado;
     always @(negedge destino) begin
         if(validade) begin
             if(recebido !== esperado) $fatal(1,"Amostra recebida=%h esperada=%h",recebido,esperado);
@@ -18,7 +18,7 @@ module tb_entrada_hud;
     initial begin
         for(int n=0;n<16;n++) begin
             wait(pronto); @(negedge origem);
-            esperado={16'(n),16'(~n),16'(n*13)};
+            esperado={9'(n),16'(n),16'(~n),16'(n*13)};
             dados=esperado; valido=1;
             @(negedge origem); valido=0; dados='1;
             wait(pronto); repeat(2) @(negedge destino);

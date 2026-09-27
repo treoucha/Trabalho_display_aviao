@@ -43,6 +43,7 @@ module top_reticula (
     wire signed [9:0] roll_q8;
     wire [9:0] velocidade_kt;
     wire [16:0] altitude_ft;
+    wire [8:0] heading_deg;
     logic signed [10:0] pitch_px_entrada;
     logic signed [9:0] roll_q8_entrada;
 
@@ -71,14 +72,14 @@ module top_reticula (
         endcase
     end
 
-    wire [47:0] amostra_pixel;
+    wire [56:0] amostra_pixel;
     wire amostra_valida;
     wire entrada_pronta;
-    // Ordem do barramento: velocidade(10), altitude(17), pitch(11), roll(10).
+    // Ordem: velocidade(10), altitude(17), pitch(11), roll(10), heading(9)..
     entrada_hud u_entrada (
         .clk_origem(clk), .clk_destino(pixel_clk),
         .valido(1'b1),
-        .dados({10'd280, 17'd36000, pitch_px_entrada, roll_q8_entrada}),
+        .dados({10'd280, 17'd36000, pitch_px_entrada, roll_q8_entrada, 9'd0}),
         .pronto(entrada_pronta),
         .valido_destino(amostra_valida), .dados_destino(amostra_pixel)
     );
@@ -86,10 +87,15 @@ module top_reticula (
         .clk(pixel_clk),
         .atualizar_quadro((pixel_x == 0) && (pixel_y == 480)),
         .dados_validos(amostra_valida),
-        .velocidade_kt_in(amostra_pixel[47:38]), .altitude_ft_in(amostra_pixel[37:21]),
-        .pitch_px_in($signed(amostra_pixel[20:10])), .roll_q8_in($signed(amostra_pixel[9:0])),
+        .velocidade_kt_in(amostra_pixel[56:47]),
+        .altitude_ft_in(amostra_pixel[46:30]),
+        .pitch_px_in($signed(amostra_pixel[29:19])),
+        .roll_q8_in($signed(amostra_pixel[18:9])),
+        .heading_deg_in(amostra_pixel[8:0]),
         .velocidade_kt(velocidade_kt), .altitude_ft(altitude_ft),
-        .horizonte_y(horizonte_y), .roll_q8(roll_q8)
+        .horizonte_y(horizonte_y),
+        .roll_q8(roll_q8),
+        .heading_deg(heading_deg)
     );
 
     wire numeros;
