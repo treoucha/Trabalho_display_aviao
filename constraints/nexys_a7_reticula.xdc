@@ -76,3 +76,10 @@ set_false_path -from [get_ports {sw[*] btn_rgb[*]}] -to [get_pins -hier -filter 
 set_property -dict { PACKAGE_PIN H6 IOSTANDARD LVCMOS33 } [get_ports { sw[12] }]
 set_property -dict { PACKAGE_PIN U12 IOSTANDARD LVCMOS33 } [get_ports { sw[13] }]
 set_false_path -from [get_ports {sw[12] sw[13]}] -to [get_pins -hier -filter {NAME =~ horizonte_meta_reg*/D}]
+# SW14/SW15: controle simulado de roll.
+# SW14/SW15: controle simulado de roll
+set_property -dict { PACKAGE_PIN U11 IOSTANDARD LVCMOS33 } [get_ports {sw[14]}]
+set_property -dict { PACKAGE_PIN V10 IOSTANDARD LVCMOS33 } [get_ports {sw[15]}]
+
+set_false_path -from [get_ports {sw[14] sw[15]}] \
+    -to [get_pins -hier -filter {NAME =~ roll_meta_reg*/D}]

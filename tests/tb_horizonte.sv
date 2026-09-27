@@ -3,7 +3,7 @@ module tb_horizonte;
     logic clk=0;
     logic [9:0] amostra_y;
     always #5 clk=~clk;
-    logic [13:0] sw=14'h0FF0;
+    logic [15:0] sw;
     tri1 sda,scl;
     wire [3:0] r,g,b;
     wire hs,vs;

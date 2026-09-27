@@ -6,7 +6,8 @@
 module top_reticula (
     input  logic       clk,
     input  logic [2:0] btn_rgb,  // BTNL=R, BTNC=G, BTNR=B
-    input  logic [13:0] sw,     // [11:0]=RGB, [12]=sobe, [13]=desce
+    input logic [15:0] sw,     // [11:0]=RGB, [12:13]=pitch, [14:15]=roll
+
 
     inout  wire        i2c_sda,
     inout  wire        i2c_scl,
@@ -36,15 +37,21 @@ module top_reticula (
 
     (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_meta = '0;
     (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_sync = '0;
+    (* ASYNC_REG = "TRUE" *) logic [1:0] roll_meta = '0;
+    (* ASYNC_REG = "TRUE" *) logic [1:0] roll_sync = '0;
     wire [9:0] horizonte_y;
     wire signed [9:0] roll_q8;
     wire [9:0] velocidade_kt;
     wire [16:0] altitude_ft;
     logic signed [10:0] pitch_px_entrada;
+    logic signed [9:0] roll_q8_entrada;
 
     always_ff @(posedge clk) begin
         horizonte_meta <= sw[13:12];
         horizonte_sync <= horizonte_meta;
+
+        roll_meta <= sw[15:14];
+        roll_sync <= roll_meta;
     end
 
     // Fonte simulada a 100 MHz. Substituir por dados processados nesse domínio.
@@ -55,6 +62,15 @@ module top_reticula (
             default: pitch_px_entrada = 11'sd0;
         endcase
     end
+
+    always_comb begin
+        case (roll_sync)
+            2'b01: roll_q8_entrada = -10'sd64; // SW14: inclina para esquerda
+            2'b10: roll_q8_entrada =  10'sd64; // SW15: inclina para direita
+            default: roll_q8_entrada = 10'sd0;
+        endcase
+    end
+
     wire [47:0] amostra_pixel;
     wire amostra_valida;
     wire entrada_pronta;
@@ -62,7 +78,7 @@ module top_reticula (
     entrada_hud u_entrada (
         .clk_origem(clk), .clk_destino(pixel_clk),
         .valido(1'b1),
-        .dados({10'd280, 17'd36000, pitch_px_entrada, 10'sd0}),
+        .dados({10'd280, 17'd36000, pitch_px_entrada, roll_q8_entrada}),
         .pronto(entrada_pronta),
         .valido_destino(amostra_valida), .dados_destino(amostra_pixel)
     );
