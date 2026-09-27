@@ -32,6 +32,15 @@ module simbologia_vga (
     logic tracos_curto;
     logic signed [21:0] distancia_horizonte;
     logic signed [21:0] deslocamento_roll;
+    // Números da escada de pitch.
+    logic pitch_numeros;
+    logic pitch_campo;
+    logic [14:0] pitch_bitmap;
+
+    integer pitch_coluna;
+    integer pitch_linha;
+    integer pitch_nivel;
+    integer pitch_codigo;
 
     logic altitude_barra;
     logic altitude_marcas;
@@ -53,8 +62,30 @@ module simbologia_vga (
     localparam int ALVO_M = 24;
     localparam int CANTO  = 10;
 
-    always_comb begin
+    function automatic logic [14:0] glifo_pitch(input integer codigo);
+        case (codigo)
+            0: glifo_pitch = 15'b111_101_101_101_111;
+            1: glifo_pitch = 15'b010_110_010_010_111;
+            2: glifo_pitch = 15'b111_001_111_100_111;
+            3: glifo_pitch = 15'b111_001_111_001_111;
+            4: glifo_pitch = 15'b101_101_111_001_001;
+            default: glifo_pitch = '0;
+        endcase
+    endfunction
 
+    always_comb begin
+            pitch_numeros = 1'b0;
+            pitch_campo   = 1'b0;
+            pitch_bitmap  = '0;
+
+            pitch_coluna = 0;
+            pitch_linha  = 0;
+            pitch_nivel  = 0;
+            pitch_codigo = 0;
+        distancia_horizonte =
+            $signed({12'b0, pixel_y}) -
+            $signed({12'b0, horizonte_y}) -
+            deslocamento_roll;
         // -------------------------------------------------
         // Horizonte artificial
         // -------------------------------------------------
@@ -62,6 +93,126 @@ module simbologia_vga (
         // Inclinação linear da simbologia; escalas e retículo permanecem fixos.
         deslocamento_roll = (($signed({12'b0, pixel_x}) - 22'sd320) * 22'(roll_q8)) >>> 8;
         distancia_horizonte = $signed({12'b0, pixel_y}) - $signed({12'b0, horizonte_y}) - deslocamento_roll;
+
+            // -------------------------------------------------
+            // Números da escada de pitch
+            // 10 / 20 / 30 / 40 nos dois lados.
+            // A posição vertical usa a mesma transformação do
+            // horizonte, portanto acompanha pitch e roll.
+            // -------------------------------------------------
+
+        if (
+            ((pixel_x >= 226) && (pixel_x < 242)) ||
+            ((pixel_x >= 398) && (pixel_x < 414))
+        ) begin
+
+            if ((pixel_x >= 226) && (pixel_x < 242))
+                pitch_coluna = int'(pixel_x) - 226;
+            else
+                pitch_coluna = int'(pixel_x) - 398;
+
+            // +10°
+            if (
+                (distancia_horizonte >= -22'sd45) &&
+                (distancia_horizonte <= -22'sd36)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 1;
+                pitch_linha = int'(distancia_horizonte + 22'sd45) / 2;
+            end
+
+            // +20°
+            else if (
+                (distancia_horizonte >= -22'sd85) &&
+                (distancia_horizonte <= -22'sd76)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 2;
+                pitch_linha = int'(distancia_horizonte + 22'sd85) / 2;
+            end
+
+            // +30°
+            else if (
+                (distancia_horizonte >= -22'sd125) &&
+                (distancia_horizonte <= -22'sd116)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 3;
+                pitch_linha = int'(distancia_horizonte + 22'sd125) / 2;
+            end
+
+            // +40°
+            else if (
+                (distancia_horizonte >= -22'sd165) &&
+                (distancia_horizonte <= -22'sd156)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 4;
+                pitch_linha = int'(distancia_horizonte + 22'sd165) / 2;
+            end
+
+            // -10°
+            else if (
+                (distancia_horizonte >= 22'sd35) &&
+                (distancia_horizonte <= 22'sd44)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 1;
+                pitch_linha = int'(distancia_horizonte - 22'sd35) / 2;
+            end
+
+            // -20°
+            else if (
+                (distancia_horizonte >= 22'sd75) &&
+                (distancia_horizonte <= 22'sd84)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 2;
+                pitch_linha = int'(distancia_horizonte - 22'sd75) / 2;
+            end
+
+            // -30°
+            else if (
+                (distancia_horizonte >= 22'sd115) &&
+                (distancia_horizonte <= 22'sd124)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 3;
+                pitch_linha = int'(distancia_horizonte - 22'sd115) / 2;
+            end
+
+            // -40°
+            else if (
+                (distancia_horizonte >= 22'sd155) &&
+                (distancia_horizonte <= 22'sd164)
+            ) begin
+                pitch_campo = 1'b1;
+                pitch_nivel = 4;
+                pitch_linha = int'(distancia_horizonte - 22'sd155) / 2;
+            end
+
+            if (pitch_campo) begin
+
+                // Primeiro dígito: 1/2/3/4
+                // Segundo dígito: 0
+                if (pitch_coluna < 8)
+                    pitch_codigo = pitch_nivel;
+                else
+                    pitch_codigo = 0;
+
+                pitch_bitmap = glifo_pitch(pitch_codigo);
+
+                if ((pitch_coluna % 8) < 6)
+                    pitch_numeros =
+                        pitch_bitmap[
+                            14 -
+                            (
+                                pitch_linha * 3 +
+                                ((pitch_coluna % 8) / 2)
+                            )
+                        ];
+            end
+        end
 
         horizonte_esq =
             (distancia_horizonte >= -22'sd1) &&
@@ -187,7 +338,8 @@ marcas_inferiores =
 
         horizonte_on =
             video_on &&
-            (horizonte_esq || horizonte_dir || marcas_superiores || marcas_inferiores);
+            (horizonte_esq || horizonte_dir ||
+            marcas_superiores || marcas_inferiores || pitch_numeros);
 
         // -------------------------------------------------
         // Escala de altitude

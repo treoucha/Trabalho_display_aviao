@@ -104,11 +104,16 @@ initial begin
                         y = 10'(py);
                         #1;
 
-                        if (horizonte)
-                            quantidade++;
+                    if (
+                        horizonte &&
+                        (px >= 250) &&
+                        (px <= 390)
+                    )
+                        quantidade++;
 
                     end
                 end
+                
 
                 if (quantidade != esperado)
                     $fatal(
@@ -116,6 +121,9 @@ initial begin
                         "Deslocamento=%0d: obtido=%0d pixels esperado=%0d",
                         desloc, quantidade, esperado
                     );
+                // O zero do número de pitch deve existir nos dois lados.
+                pixel(234, linha - 5, 1);
+                pixel(406, linha - 5, 1);
 
                 // Região central deve permanecer vazia.
                 pixel(320, linha, 0);
