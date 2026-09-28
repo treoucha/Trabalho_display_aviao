@@ -53,24 +53,8 @@ set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { i2c_scl 
 
 ## Controles: Master XDC oficial Nexys-A7-100T, consultado em 27/09/2026.
 # https://github.com/Digilent/digilent-xdc/blob/master/Nexys-A7-100T-Master.xdc
-set_property -dict { PACKAGE_PIN J15 IOSTANDARD LVCMOS33 } [get_ports { sw[0] }]
-set_property -dict { PACKAGE_PIN L16 IOSTANDARD LVCMOS33 } [get_ports { sw[1] }]
-set_property -dict { PACKAGE_PIN M13 IOSTANDARD LVCMOS33 } [get_ports { sw[2] }]
-set_property -dict { PACKAGE_PIN R15 IOSTANDARD LVCMOS33 } [get_ports { sw[3] }]
-set_property -dict { PACKAGE_PIN R17 IOSTANDARD LVCMOS33 } [get_ports { sw[4] }]
-set_property -dict { PACKAGE_PIN T18 IOSTANDARD LVCMOS33 } [get_ports { sw[5] }]
-set_property -dict { PACKAGE_PIN U18 IOSTANDARD LVCMOS33 } [get_ports { sw[6] }]
-set_property -dict { PACKAGE_PIN R13 IOSTANDARD LVCMOS33 } [get_ports { sw[7] }]
-set_property -dict { PACKAGE_PIN T8 IOSTANDARD LVCMOS18 } [get_ports { sw[8] }]
-set_property -dict { PACKAGE_PIN U8 IOSTANDARD LVCMOS18 } [get_ports { sw[9] }]
-set_property -dict { PACKAGE_PIN R16 IOSTANDARD LVCMOS33 } [get_ports { sw[10] }]
-set_property -dict { PACKAGE_PIN T13 IOSTANDARD LVCMOS33 } [get_ports { sw[11] }]
-set_property -dict { PACKAGE_PIN P17 IOSTANDARD LVCMOS33 } [get_ports { btn_rgb[0] }]
-set_property -dict { PACKAGE_PIN N17 IOSTANDARD LVCMOS33 } [get_ports { btn_rgb[1] }]
-set_property -dict { PACKAGE_PIN M17 IOSTANDARD LVCMOS33 } [get_ports { btn_rgb[2] }]
 
 # Entradas manuais assíncronas: exceção somente até o primeiro estágio.
-set_false_path -from [get_ports {sw[*] btn_rgb[*]}] -to [get_pins -hier -filter {NAME =~ u_cor/*_meta_reg*/D}]
 
 # SW12/SW13: Master XDC Nexys-A7-100T, H6/U12, ambos LVCMOS33.
 set_property -dict { PACKAGE_PIN H6 IOSTANDARD LVCMOS33 } [get_ports { sw[12] }]
@@ -92,3 +76,7 @@ set_property -dict { PACKAGE_PIN P18 IOSTANDARD LVCMOS33 } [get_ports { btn_head
 # Entradas assincronas ate o primeiro estagio de sincronizacao.
 set_false_path -from [get_ports {btn_heading[*]}] \
     -to [get_pins -hier -filter {NAME =~ u_heading/btn_meta_reg*/D}]
+
+# SW0 seleciona NORMAL (0) / DECLUTTER (1).
+set_property -dict { PACKAGE_PIN J15 IOSTANDARD LVCMOS33 } [get_ports { display_mode }]
+set_false_path -from [get_ports display_mode] -to [get_pins -hier -filter {NAME =~ u_modo/modo_meta_reg/D}]

@@ -6,7 +6,7 @@ module tb_vga;
     logic [15:0] sw;
     wire [3:0] r,g,b;
     wire hs,vs;
-    top_reticula dut(clk,3'b0,2'b0,16'h0FFF,sda,scl,r,g,b,hs,vs);
+    top_reticula dut(clk,2'b0,4'b0,1'b0,sda,scl,r,g,b,hs,vs);
     integer active=0, hlow=0, vlow=0, pixels=0, out_file;
     integer expected_x=0,expected_y=0;
     integer pixels_velocidade=0;

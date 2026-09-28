@@ -12,6 +12,7 @@ wait_on_run impl_1
 if {[get_property PROGRESS [get_runs impl_1]] ne "100%"} { error "Implementação não concluída" }
 open_run impl_1
 report_timing_summary -file [file join $root build timing_summary.rpt]
+source [file join $root scripts report_fmax.tcl]
 report_utilization -file [file join $root build utilization.rpt]
 report_drc -file [file join $root build drc.rpt]
 puts "BUILD_BITSTREAM=[file join $root build vivado reticula.runs impl_1 top_reticula.bit]"

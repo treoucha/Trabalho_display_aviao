@@ -5,9 +5,9 @@
 
 module top_reticula (
     input  logic        clk,
-    input  logic [2:0]  btn_rgb,      // BTNL=R, BTNC=G, BTNR=B
     input  logic [1:0]  btn_heading,  // BTNU=+10, BTND=-10
-    input  logic [15:0] sw,
+    input  logic [15:12] sw,        // pitch e roll
+    input  logic        display_mode, // SW0: 0=NORMAL, 1=DECLUTTER
 
     inout  wire         i2c_sda,
     inout  wire         i2c_scl,
@@ -25,14 +25,11 @@ module top_reticula (
     logic       video_on;
 
     wire pixel_clk;
-    wire [11:0] cor_reticula;
-
-    controle_cor u_cor (
-        .clk (pixel_clk),
-        .btn_rgb (btn_rgb),
-        .sw (sw[11:0]),
-        .atualizar ((pixel_x == 0) && (pixel_y == 480)),
-        .rgb (cor_reticula)
+    wire declutter;
+    controle_modo u_modo (
+        .clk(pixel_clk), .display_mode(display_mode),
+        .atualizar((pixel_x == 0) && (pixel_y == 480)),
+        .declutter(declutter)
     );
 
     (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_meta = '0;
@@ -211,19 +208,17 @@ module top_reticula (
     // -----------------------------------------------------
 
     assign VGA_R =
-        retic                         ? cor_reticula[3:0] :
+        retic                         ? 4'h0 :
         alvo                          ? 4'hF :
-        (sensor_status && !sensor_ok) ? 4'hF :
+        (sensor_status && !declutter && !sensor_ok) ? 4'hF :
                                         4'h0;
 
     assign VGA_G =
-        retic                              ? cor_reticula[7:4] :
-        (horizonte || altitude || velocidade || direcao || numeros) ? 4'hF :
-        (sensor_status && sensor_ok)        ? 4'hF :
+        retic                              ? 4'hF :
+        (horizonte || (!declutter && (altitude || velocidade || direcao || numeros))) ? 4'hF :
+        (sensor_status && !declutter && sensor_ok)        ? 4'hF :
                                              4'h0;
 
-    assign VGA_B =
-        retic ? cor_reticula[11:8] :
-                4'h0;
+    assign VGA_B = 4'h0;
 
 endmodule

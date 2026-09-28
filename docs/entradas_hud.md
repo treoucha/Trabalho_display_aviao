@@ -71,7 +71,7 @@ A fonte 3x5 é ampliada duas vezes, com supressão de zeros à esquerda. Rótulo
 fora da faixa ficam vazios; os valores atuais são saturados por dados_hud.
 
 SW12/SW13 continuam escolhendo horizonte acima/abaixo/centralizado. Na fonte
-simulada, roll é zero. Os controles RGB do retículo permanecem independentes.
+simulada, SW14/SW15 selecionam roll negativo/positivo; ambos iguais dão roll zero. O retículo é verde fixo e SW0 seleciona o modo de exibição.
 
 ## Verificar
 
