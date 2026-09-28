@@ -6,6 +6,38 @@ A imagem é gerada por coordenadas, sem framebuffer, a 25 MHz (aproximadamente
 59,52 Hz). Pitch, roll e heading são simulados por controles da placa;
 velocidade e altitude permanecem em 280 KT e 36000 FT.
 
+## O que aparece na tela
+
+| Elemento | O que significa | Como funciona neste projeto |
+| --- | --- | --- |
+| Retículo | Cruz de referência no centro da tela, com um vão no meio. Serve como referência de apontamento. | Fica parado e verde, mesmo quando o horizonte muda. O desenho está em `rtl/reticula_vga.sv`. |
+| Horizonte artificial | Linha que representa a referência do horizonte. | Sobe, desce e inclina conforme os switches. É desenhado em `rtl/simbologia_vga.sv`. |
+| Escada de pitch | Marcas que ajudam a visualizar a atitude de nariz para cima ou para baixo. | Acompanha o horizonte, com referências ±10/20/30/40 de simulação, sem calibração com sensor. |
+| Escala de velocidade | Indicação à esquerda, em nós (KT). | O valor fornecido pelo projeto é fixo em 280 KT. |
+| Escala de altitude | Indicação à direita, em pés (FT). | O valor fornecido pelo projeto é fixo em 36000 FT. |
+| Heading (rumo) | Direção em graus, acompanhada das letras N/E/S/W. | Varia pelos botões BTNU e BTND, em passos de 10°. |
+| Marcador de alvo | Símbolo que representa um alvo na demonstração. | Tem posição fixa; ainda não rastreia nem trava um alvo. |
+| Indicador do sensor | Mostra se a identificação do MMA8452Q foi reconhecida. | Não representa leitura de inclinação ou movimento da aeronave. |
+
+**Retículo e horizonte são elementos diferentes:** o retículo é a referência
+fixa central; o horizonte se desloca e inclina em relação a essa referência.
+
+## O que cada controle da placa faz
+
+| Controle | O que altera |
+| --- | --- |
+| SW0 | Seleciona NORMAL (desligado) ou DECLUTTER (ligado). |
+| SW12 ligado sozinho | Move o horizonte 40 pixels para cima. |
+| SW13 ligado sozinho | Move o horizonte 40 pixels para baixo. |
+| SW14 ligado sozinho | Inclina o horizonte para a esquerda. |
+| SW15 ligado sozinho | Inclina o horizonte para a direita. |
+| BTNU | Aumenta o heading em 10°. |
+| BTND | Diminui o heading em 10°. |
+| SW1 a SW11 e BTNL/BTNC/BTNR | Sem função nesta versão. |
+
+SW12 e SW13 iguais mantêm o horizonte centralizado na vertical. SW14 e SW15
+iguais deixam o horizonte sem inclinação. Nenhum desses controles move o retículo.
+
 ## Modos NORMAL / DECLUTTER (RF-08)
 
 O **SW0** seleciona o modo: desligado = NORMAL; ligado = DECLUTTER.
@@ -20,19 +52,36 @@ Esta é a definição de itens críticos adotada para a demonstração acadêmic
 SW1..SW11 e BTNL/BTNC/BTNR ficam livres. O retículo é verde fixo;
 os controles de cor foram removidos. Pitch, roll e heading funcionam nos dois modos.
 
-## Módulos
+## Qual arquivo controla cada parte
 
-- `rtl/top_reticula.sv`: integra os módulos e compõe RGB.
-- `rtl/vga_controller.sv`: divisor de clock, coordenadas e sincronismos.
-- `rtl/reticula_vga.sv`: máscara do retículo com espessura e vão configuráveis.
-- `rtl/controle_modo.sv`: sincronização, debounce e seleção de modo entre quadros.
-- `rtl/controle_heading.sv`: rumo em passos de 10 graus pelos botões BTNU/BTND.
-- `rtl/simbologia_vga.sv`: horizonte deslocável, escalas de velocidade/altitude, heading variável e alvo fixo.
-- `rtl/entrada_hud.sv`: transfere amostras de 100 para 25 MHz com confirmação.
-- `rtl/dados_hud.sv`: recebe dados processados e aplica o conjunto entre quadros.
-- `rtl/numeros_hud.sv`: desenha números e unidades com fonte 3x5 ampliada.
-- `rtl/mma8452_i2c.sv`: lê WHO_AM_I; não fornece atitude da aeronave.
-- `constraints/nexys_a7_reticula.xdc`: clock, VGA, JA e controles da Nexys A7.
+### Desenho da tela
+
+| Arquivo | Responsabilidade |
+| --- | --- |
+| `rtl/reticula_vga.sv` | Define o formato do retículo: espessura, tamanho e vão central. |
+| `rtl/simbologia_vga.sv` | Desenha horizonte, escada de pitch, escalas laterais, direção e marcador de alvo. |
+| `rtl/numeros_hud.sv` | Desenha números e unidades com uma fonte 3×5 ampliada. |
+| `rtl/top_reticula.sv` | Liga os módulos, combina os símbolos, define as saídas de cor e quais elementos aparecem em cada modo. |
+
+### Controles e dados
+
+| Arquivo | Responsabilidade |
+| --- | --- |
+| `rtl/controle_modo.sv` | Recebe SW0, sincroniza e filtra a entrada, e aplica o modo entre quadros. |
+| `rtl/controle_heading.sv` | Recebe BTNU/BTND e calcula o heading em passos de 10°. |
+| `rtl/top_reticula.sv` | Interpreta SW12 a SW15 como pitch/roll simulados e fornece velocidade e altitude fixas. |
+| `rtl/entrada_hud.sv` | Transfere o conjunto de dados do clock de 100 MHz para o de 25 MHz com confirmação. |
+| `rtl/dados_hud.sv` | Recebe os dados processados e aplica o conjunto entre quadros. |
+| `rtl/mma8452_i2c.sv` | Lê a identificação WHO_AM_I do sensor; não calcula a atitude da aeronave. |
+
+### Sinal VGA e ligação com a placa
+
+| Arquivo | Responsabilidade |
+| --- | --- |
+| `rtl/vga_controller.sv` | Gera o clock de pixel, as coordenadas da imagem e os sincronismos VGA. |
+| `constraints/nexys_a7_reticula.xdc` | Associa os sinais do projeto aos pinos da Nexys A7 e define as restrições de clock. |
+| `scripts/build_vivado.tcl` | Cria o projeto no Vivado, inclui os arquivos RTL e gera o bitstream. |
+| `scripts/program_board.tcl` | Programa a FPGA com o bitstream gerado. |
 
 ## Horizonte simulado
 
@@ -61,6 +110,30 @@ A interface aceita velocidade, altitude, deslocamento de pitch e inclinação de
 roll processados. Consulte [formatos e ligação futura do sensor](docs/entradas_hud.md).
 A transferência entre clocks já está implementada. A calibração e a conversão
 dos eixos brutos para atitude ainda dependem da montagem do sensor.
+
+## GitHub, Vivado e placa: etapas separadas
+
+| Etapa | O que faz |
+| --- | --- |
+| GitHub | Armazena os arquivos e o histórico de versões do projeto. |
+| `git pull origin main` | Traz as atualizações para a pasta local do repositório. |
+| Vivado | Usa os arquivos adicionados ao projeto para executar síntese, implementação e gerar o `.bit`. |
+| Program Device | Carrega o `.bit` escolhido na FPGA. Só então a placa passa a executar esse circuito. |
+
+Atualizar pelo Git não adiciona automaticamente um módulo novo a um projeto
+Vivado já aberto e não reprograma a placa.
+
+Se a síntese mostrar `module 'controle_modo' not found` após a atualização:
+
+1. Confirme que `rtl/controle_modo.sv` existe na pasta atualizada.
+2. No Vivado, use **Add Sources → Add or create design sources → Add Files**
+   e inclua esse arquivo em **Design Sources**.
+3. Confira se os demais arquivos `rtl/*.sv` atuais estão incluídos e se
+   `top_reticula` é o módulo principal.
+4. Execute novamente **Run Synthesis** e **Generate Bitstream**.
+5. Em **Program Device**, selecione o `.bit` recém-gerado.
+
+O script de geração abaixo inclui todos os `rtl/*.sv` ao criar o projeto.
 
 ## Testar e gerar no Vivado
 
