@@ -4,7 +4,7 @@ module tb_roll;
     logic signed [9:0] roll=64;
     logic ativo=1;
     wire h,a,d,t,v;
-    simbologia_vga dut(x,y,ativo,10'd240,roll,h,a,d,t,v);
+    simbologia_vga dut(x,y,ativo,10'd240,roll,9'd0,h,a,d,t,v);
     initial begin
         #1; if(!h) $fatal(1,"Roll positivo: esquerda deveria subir");
         x=448; y=272; #1; if(!h) $fatal(1,"Roll positivo: direita deveria descer");

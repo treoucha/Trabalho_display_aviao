@@ -37,15 +37,18 @@ module tb_dados_hud;
         vel=0; alt=0; pitch=0; roll=0; repeat(3) ciclo();
         quadro=1; ciclo(); quadro=0;
         if(v!=321 || a!=45678 || y!=200 || r!=64 || h!=275) $fatal(1,"Amostra entre quadros foi perdida");
-        vel=1023; alt=131071; pitch=1023; roll=511; valido=1; ciclo(); valido=0;
+        vel=1023; alt=131071; pitch=1023; roll=511; heading=511; valido=1; ciclo(); valido=0;
         quadro=1; ciclo(); quadro=0;
         if(v!=999 || a!=99999 || y!=320 || r!=128) $fatal(1,"Limites superiores incorretos");
+        if(h !== 9'd359) $fatal(1,"Rumo de entrada=511: obtido=%0d esperado=359",h);
         pitch=-1024; roll=-512; valido=1; quadro=1; ciclo();
         if(y!=320) $fatal(1,"Amostra simultânea deve aguardar próximo quadro");
         valido=0; quadro=0; ciclo(); quadro=1; ciclo(); quadro=0;
         if(y!=160 || r!=-128) $fatal(1,"Limites inferiores incorretos");
-        $display("PASS dados: captura atômica, pulso válido, retenção, coincidência e saturação"); $finish;
-        if(v!=999 || a!=99999 || y!=320 || r!=128 || h!=359)
-        $fatal(1,"Limites superiores incorretos");
+        heading=0; valido=1; ciclo(); valido=0;
+        if(h !== 9'd359) $fatal(1,"Antes do quadro: obtido=%0d esperado=359",h);
+        quadro=1; ciclo(); quadro=0;
+        if(h !== 9'd0) $fatal(1,"Rumo de entrada=0: obtido=%0d esperado=0",h);
+        $display("PASS dados: captura atômica, pulso válido, retenção, coincidência e saturação de rumo"); $finish;
     end
 endmodule
