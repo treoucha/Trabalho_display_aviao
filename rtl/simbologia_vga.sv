@@ -72,6 +72,9 @@ module simbologia_vga (
     logic alvo_inf_esq;
     logic alvo_inf_dir;
 
+    // TODO(auditoria): o alvo ainda usa posicao fixa. Definir primeiro o
+    // comportamento de movimento e `target_lock` antes de trocar ALVO_X/Y
+    // por sinais variaveis.
     localparam int ALVO_X = 430;
     localparam int ALVO_Y = 180;
     localparam int ALVO_M = 24;
@@ -446,6 +449,8 @@ marcas_inferiores =
         // -------------------------------------------------
         // Indicador de direção
         // -------------------------------------------------
+        // TODO(auditoria): quando o layout estiver fechado, consolidar centro,
+        // limites da fita e escalas repetidas em constantes geometricas.
         // -------------------------------------------------
         // Heading tape / indicador de direção
         //

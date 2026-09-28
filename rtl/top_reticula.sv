@@ -77,11 +77,20 @@ module top_reticula (
     wire entrada_pronta;
     wire [8:0] heading_entrada;
 
+    // TODO(auditoria): `entrada_pronta` ainda nao tem consumidor. Ao trocar
+    // a fonte simulada por uma fonte que possa pausar, usar o handshake de
+    // `entrada_hud` ou remover o sinal se continuar desnecessario.
+
     controle_heading u_heading (
         .clk         (clk),
         .btn         (btn_heading),
         .heading_deg (heading_entrada)
     );
+    // TODO(auditoria): velocidade e altitude ainda sao valores simulados fixos.
+    // Definir primeiro o contrato de entrada (faixa, unidade e controle fisico)
+    // antes de torna-los variaveis.
+    // TODO(auditoria): longitude/localizacao so deve entrar depois de definir
+    // formato, unidade e representacao visual; nao reservar bits antes disso.
     // Ordem: velocidade(10), altitude(17), pitch(11), roll(10), heading(9)..
     entrada_hud u_entrada (
         .clk_origem(clk), .clk_destino(pixel_clk),
@@ -125,6 +134,9 @@ module top_reticula (
     // -----------------------------------------------------
     // SEN-10955 / MMA8452Q
     // -----------------------------------------------------
+    // TODO(auditoria): sensores reais estao fora do escopo principal. Se este
+    // indicador permanecer, tratar as pendencias eletricas/I2C separadamente
+    // sem bloquear modos e simbologia simulada.
 
     logic [7:0] sensor_id;
     logic       sensor_ok;
@@ -169,6 +181,8 @@ module top_reticula (
     // -----------------------------------------------------
     // Simbologia
     // -----------------------------------------------------
+    // TODO(auditoria): implementar NORMAL/DECLUTTER sem alterar o gerador VGA.
+    // A opcao mais simples e filtrar as mascaras no compositor do top-level.
 
     simbologia_vga u_simbologia (
         .horizonte_y  (horizonte_y),
@@ -209,6 +223,8 @@ module top_reticula (
     // -----------------------------------------------------
     // Compositor RGB
     // -----------------------------------------------------
+    // TODO(auditoria): definir uma politica unica de prioridade de cor para
+    // evitar mistura inesperada em sobreposicoes (ex.: vermelho + verde).
 
     assign VGA_R =
         retic                         ? cor_reticula[3:0] :

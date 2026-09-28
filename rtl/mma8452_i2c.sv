@@ -9,6 +9,11 @@
 //
 // Clock FPGA: 100 MHz
 // I2C: aproximadamente 100 kHz
+//
+// TODO(auditoria, opcional): se o sensor permanecer no projeto, sincronizar
+// a amostragem de SDA, decidir se SCL sera observado para clock stretching e
+// validar alimentacao/pull-ups na montagem. Nao alterar apenas para silenciar
+// o warning RPBF-3; sensores reais estao fora do escopo principal atual.
 // =========================================================
 
 module mma8452_i2c #(
