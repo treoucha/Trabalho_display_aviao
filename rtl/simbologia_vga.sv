@@ -10,7 +10,7 @@ module simbologia_vga (
     input  logic       video_on,
     input  logic [9:0] horizonte_y, // Centro limitado a 160..320.
     input  logic signed [9:0] roll_q8, // Inclinação: pixels por 256 pixels em X.
-
+    input  logic [8:0] heading_deg,
     output logic       horizonte_on,
     output logic       altitude_on,
     output logic       direcao_on,
@@ -52,6 +52,21 @@ module simbologia_vga (
     logic direcao_marcas;
     logic direcao_centro;
 
+    logic direcao_cardinal;
+    logic [24:0] cardinal_bitmap;
+
+    integer direcao_delta_px;
+    integer direcao_grau;
+
+    integer card_x_n;
+    integer card_x_e;
+    integer card_x_s;
+    integer card_x_w;
+
+    integer card_coluna;
+    integer card_linha;
+    integer card_codigo;
+
     logic alvo_sup_esq;
     logic alvo_sup_dir;
     logic alvo_inf_esq;
@@ -61,7 +76,6 @@ module simbologia_vga (
     localparam int ALVO_Y = 180;
     localparam int ALVO_M = 24;
     localparam int CANTO  = 10;
-
     function automatic logic [14:0] glifo_pitch(input integer codigo);
         case (codigo)
             0: glifo_pitch = 15'b111_101_101_101_111;
@@ -73,7 +87,57 @@ module simbologia_vga (
         endcase
     endfunction
 
+    function automatic logic [24:0] glifo_cardinal(input integer codigo);
+    case (codigo)
+            // N
+            0: glifo_cardinal = 25'b10001_11001_10101_10011_10001;
+
+            // E
+            1: glifo_cardinal = 25'b11111_10000_11110_10000_11111;
+
+            // S
+            2: glifo_cardinal = 25'b11111_10000_11111_00001_11111;
+
+            // W
+            3: glifo_cardinal = 25'b10001_10001_10101_11111_10001;
+
+            default: glifo_cardinal = '0;
+        endcase
+    endfunction
+
+    function automatic integer posicao_cardinal(
+        input integer alvo,
+        input integer atual
+    );
+        integer diferenca;
+        begin
+            diferenca = alvo - atual;
+
+            if (diferenca > 180)
+                diferenca = diferenca - 360;
+            else if (diferenca < -180)
+                diferenca = diferenca + 360;
+
+            // 4 pixels por grau.
+            posicao_cardinal = 320 + diferenca * 4;
+        end
+    endfunction
+
     always_comb begin
+            direcao_cardinal = 1'b0;
+            cardinal_bitmap = '0;
+
+            direcao_delta_px = 0;
+            direcao_grau = 0;
+
+            card_x_n = 0;
+            card_x_e = 0;
+            card_x_s = 0;
+            card_x_w = 0;
+
+            card_coluna = 0;
+            card_linha = 0;
+            card_codigo = 4;
             pitch_numeros = 1'b0;
             pitch_campo   = 1'b0;
             pitch_bitmap  = '0;
@@ -82,10 +146,6 @@ module simbologia_vga (
             pitch_linha  = 0;
             pitch_nivel  = 0;
             pitch_codigo = 0;
-        distancia_horizonte =
-            $signed({12'b0, pixel_y}) -
-            $signed({12'b0, horizonte_y}) -
-            deslocamento_roll;
         // -------------------------------------------------
         // Horizonte artificial
         // -------------------------------------------------
@@ -338,8 +398,13 @@ marcas_inferiores =
 
         horizonte_on =
             video_on &&
-            (horizonte_esq || horizonte_dir ||
-            marcas_superiores || marcas_inferiores || pitch_numeros);
+            (
+                horizonte_esq ||
+                horizonte_dir ||
+                marcas_superiores ||
+                marcas_inferiores ||
+                pitch_numeros
+            );
 
         // -------------------------------------------------
         // Escala de altitude
@@ -381,55 +446,138 @@ marcas_inferiores =
         // -------------------------------------------------
         // Indicador de direção
         // -------------------------------------------------
+        // -------------------------------------------------
+        // Heading tape / indicador de direção
+        //
+        // 4 pixels = 1 grau.
+        // Marcas a cada 10 graus.
+        // Marcas maiores a cada 30 graus.
+        // N/E/S/W acompanham o heading.
+        // O indicador central permanece fixo.
+        // -------------------------------------------------
 
         direcao_barra =
-            (pixel_y >= 59) &&
-            (pixel_y <= 61) &&
-            (pixel_x >= 160) &&
-            (pixel_x <= 480);
+    (pixel_y >= 59) &&
+    (pixel_y <= 61) &&
+    (pixel_x >= 160) &&
+    (pixel_x <= 480);
 
-        direcao_marcas =
-            (pixel_y >= 50) &&
-            (pixel_y <= 61) &&
-            (
-                ((pixel_x >= 159) && (pixel_x <= 161)) ||
-                ((pixel_x >= 199) && (pixel_x <= 201)) ||
-                ((pixel_x >= 239) && (pixel_x <= 241)) ||
-                ((pixel_x >= 279) && (pixel_x <= 281)) ||
-                ((pixel_x >= 319) && (pixel_x <= 321)) ||
-                ((pixel_x >= 359) && (pixel_x <= 361)) ||
-                ((pixel_x >= 399) && (pixel_x <= 401)) ||
-                ((pixel_x >= 439) && (pixel_x <= 441)) ||
-                ((pixel_x >= 479) && (pixel_x <= 481))
-            );
+// Heading correspondente à posição horizontal atual.
+direcao_delta_px = int'(pixel_x) - 320;
+direcao_grau = int'(heading_deg) + (direcao_delta_px / 4);
 
-        direcao_centro =
-            (pixel_y >= 62) &&
-            (pixel_y <= 68) &&
-            (
-                (
-                    (pixel_x >= 316) &&
-                    (pixel_x <= 324) &&
-                    (pixel_y == 62)
-                )
-                ||
-                (
-                    (pixel_x >= 318) &&
-                    (pixel_x <= 322) &&
-                    (pixel_y >= 63) &&
-                    (pixel_y <= 65)
-                )
-                ||
-                (
-                    (pixel_x == 320) &&
-                    (pixel_y >= 66) &&
-                    (pixel_y <= 68)
-                )
-            );
+// A janela visível representa somente +/-40 graus,
+// portanto um único ajuste resolve o wrap 0/359.
+if (direcao_grau < 0)
+    direcao_grau = direcao_grau + 360;
+else if (direcao_grau >= 360)
+    direcao_grau = direcao_grau - 360;
+
+// Marcas da fita.
+// A condição %4 garante que cada grau esteja alinhado
+// exatamente à grade de 4 pixels.
+direcao_marcas =
+    (pixel_x >= 160) &&
+    (pixel_x <= 480) &&
+    ((direcao_delta_px % 4) == 0) &&
+    ((direcao_grau % 10) == 0) &&
+    (
+        (
+            ((direcao_grau % 30) == 0) &&
+            (pixel_y >= 48) &&
+            (pixel_y <= 61)
+        )
+        ||
+        (
+            ((direcao_grau % 30) != 0) &&
+            (pixel_y >= 53) &&
+            (pixel_y <= 61)
+        )
+    );
+
+// Indicador fixo no centro da tela.
+direcao_centro =
+    (pixel_y >= 62) &&
+    (pixel_y <= 68) &&
+    (
+        (
+            (pixel_x >= 316) &&
+            (pixel_x <= 324) &&
+            (pixel_y == 62)
+        )
+        ||
+        (
+            (pixel_x >= 318) &&
+            (pixel_x <= 322) &&
+            (pixel_y >= 63) &&
+            (pixel_y <= 65)
+        )
+        ||
+        (
+            (pixel_x == 320) &&
+            (pixel_y >= 66) &&
+            (pixel_y <= 68)
+        )
+    );
+
+// Posição horizontal dos quatro pontos cardeais.
+card_x_n = posicao_cardinal(0,   int'(heading_deg));
+card_x_e = posicao_cardinal(90,  int'(heading_deg));
+card_x_s = posicao_cardinal(180, int'(heading_deg));
+card_x_w = posicao_cardinal(270, int'(heading_deg));
+
+// Letras 5x5 ampliadas 2x.
+    if ((pixel_x >= 160) && (pixel_x <= 480) &&
+        (pixel_y >= 36) && (pixel_y < 46)) begin
+
+        if (
+            (int'(pixel_x) >= card_x_n - 5) &&
+            (int'(pixel_x) <  card_x_n + 5)
+        ) begin
+            card_codigo = 0;
+            card_coluna = (int'(pixel_x) - (card_x_n - 5)) / 2;
+        end
+        else if (
+            (int'(pixel_x) >= card_x_e - 5) &&
+            (int'(pixel_x) <  card_x_e + 5)
+        ) begin
+            card_codigo = 1;
+            card_coluna = (int'(pixel_x) - (card_x_e - 5)) / 2;
+        end
+        else if (
+            (int'(pixel_x) >= card_x_s - 5) &&
+            (int'(pixel_x) <  card_x_s + 5)
+        ) begin
+            card_codigo = 2;
+            card_coluna = (int'(pixel_x) - (card_x_s - 5)) / 2;
+        end
+        else if (
+            (int'(pixel_x) >= card_x_w - 5) &&
+            (int'(pixel_x) <  card_x_w + 5)
+        ) begin
+            card_codigo = 3;
+            card_coluna = (int'(pixel_x) - (card_x_w - 5)) / 2;
+        end
+
+        if (card_codigo < 4) begin
+            card_linha = (int'(pixel_y) - 36) / 2;
+            cardinal_bitmap = glifo_cardinal(card_codigo);
+
+            direcao_cardinal =
+                cardinal_bitmap[
+                    24 - (card_linha * 5 + card_coluna)
+                ];
+        end
+    end
 
         direcao_on =
             video_on &&
-            (direcao_barra || direcao_marcas || direcao_centro);
+    (
+        direcao_barra ||
+        direcao_marcas ||
+        direcao_centro ||
+        direcao_cardinal
+    );
 
         // -------------------------------------------------
         // Marcador de alvo

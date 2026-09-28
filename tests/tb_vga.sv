@@ -41,6 +41,8 @@ module tb_vga;
                 active++; $fwrite(out_file,"%0d %0d %0d\n",r*17,g*17,b*17);
             end else if({r,g,b} !== 12'h000) $fatal(1,"Blanking: RGB obtido=%h esperado=000",{r,g,b});
             if(dut.retic && {r,g,b} !== 12'h0F0) $fatal(1,"Retículo padrão: obtido=%h esperado=0F0",{r,g,b});
+            if(expected_x==315 && expected_y==36 && {r,g,b} !== 12'h0F0)
+                $fatal(1,"Letra N: RGB obtido=%h esperado=0F0",{r,g,b});
             if(expected_x==799) begin expected_x=0; expected_y=(expected_y==524)?0:expected_y+1; end
             else expected_x++;
             @(posedge dut.pixel_clk);

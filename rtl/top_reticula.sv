@@ -166,6 +166,7 @@ module top_reticula (
     simbologia_vga u_simbologia (
         .horizonte_y  (horizonte_y),
         .roll_q8      (roll_q8),
+        .heading_deg  (heading_deg),
         .pixel_x      (pixel_x),
         .pixel_y      (pixel_y),
         .video_on     (video_on),
