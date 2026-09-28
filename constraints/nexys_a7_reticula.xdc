@@ -83,3 +83,12 @@ set_property -dict { PACKAGE_PIN V10 IOSTANDARD LVCMOS33 } [get_ports {sw[15]}]
 
 set_false_path -from [get_ports {sw[14] sw[15]}] \
     -to [get_pins -hier -filter {NAME =~ roll_meta_reg*/D}]
+
+
+# BTNU / BTND: controle manual do heading
+set_property -dict { PACKAGE_PIN M18 IOSTANDARD LVCMOS33 } [get_ports { btn_heading[0] }]
+set_property -dict { PACKAGE_PIN P18 IOSTANDARD LVCMOS33 } [get_ports { btn_heading[1] }]
+
+# Entradas assincronas ate o primeiro estagio de sincronizacao.
+set_false_path -from [get_ports {btn_heading[*]}] \
+    -to [get_pins -hier -filter {NAME =~ u_heading/btn_meta_reg*/D}]

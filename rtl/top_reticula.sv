@@ -4,20 +4,20 @@
 // =========================================================
 
 module top_reticula (
-    input  logic       clk,
-    input  logic [2:0] btn_rgb,  // BTNL=R, BTNC=G, BTNR=B
-    input logic [15:0] sw,     // [11:0]=RGB, [12:13]=pitch, [14:15]=roll
+    input  logic        clk,
+    input  logic [2:0]  btn_rgb,      // BTNL=R, BTNC=G, BTNR=B
+    input  logic [1:0]  btn_heading,  // BTNU=+10, BTND=-10
+    input  logic [15:0] sw,
 
+    inout  wire         i2c_sda,
+    inout  wire         i2c_scl,
 
-    inout  wire        i2c_sda,
-    inout  wire        i2c_scl,
+    output wire [3:0]   VGA_R,
+    output wire [3:0]   VGA_G,
+    output wire [3:0]   VGA_B,
 
-    output wire [3:0]  VGA_R,
-    output wire [3:0]  VGA_G,
-    output wire [3:0]  VGA_B,
-
-    output wire        VGA_HS,
-    output wire        VGA_VS
+    output wire         VGA_HS,
+    output wire         VGA_VS
 );
 
     logic [9:0] pixel_x;
@@ -75,11 +75,18 @@ module top_reticula (
     wire [56:0] amostra_pixel;
     wire amostra_valida;
     wire entrada_pronta;
+    wire [8:0] heading_entrada;
+
+    controle_heading u_heading (
+        .clk         (clk),
+        .btn         (btn_heading),
+        .heading_deg (heading_entrada)
+    );
     // Ordem: velocidade(10), altitude(17), pitch(11), roll(10), heading(9)..
     entrada_hud u_entrada (
         .clk_origem(clk), .clk_destino(pixel_clk),
         .valido(1'b1),
-        .dados({10'd280, 17'd36000, pitch_px_entrada, roll_q8_entrada, 9'd0}),
+        .dados({10'd280, 17'd36000, pitch_px_entrada, roll_q8_entrada, heading_entrada}),
         .pronto(entrada_pronta),
         .valido_destino(amostra_valida), .dados_destino(amostra_pixel)
     );
