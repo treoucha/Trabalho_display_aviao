@@ -9,6 +9,15 @@ module top_reticula (
     input  logic [15:12] sw,        // pitch e roll
     input  logic        display_mode, // SW0: 0=NORMAL, 1=DECLUTTER
 
+    // Entradas analogicas do joystick pelo JXADC.
+    input  wire         vauxp3,
+    input  wire         vauxn3,
+    input  wire         vauxp10,
+    input  wire         vauxn10,
+
+    // LEDs temporarios para validacao do joystick.
+    output wire [3:0]   JOY_LED,
+
     inout  wire         i2c_sda,
     inout  wire         i2c_scl,
 
@@ -23,6 +32,51 @@ module top_reticula (
     logic [9:0] pixel_x;
     logic [9:0] pixel_y;
     logic       video_on;
+
+    // -----------------------------------------------------
+    // Joystick analogico KY-023 via XADC
+    // -----------------------------------------------------
+
+    logic [11:0] joystick_x_raw;
+    logic [11:0] joystick_y_raw;
+
+    logic joystick_x_menos;
+    logic joystick_x_mais;
+    logic joystick_y_menos;
+    logic joystick_y_mais;
+
+    joystick_xadc u_joystick_xadc (
+        .clk     (clk),
+        .vauxp3  (vauxp3),
+        .vauxn3  (vauxn3),
+        .vauxp10 (vauxp10),
+        .vauxn10 (vauxn10),
+        .x_raw   (joystick_x_raw),
+        .y_raw   (joystick_y_raw)
+    );
+
+    controle_joystick u_controle_joystick (
+        .clk     (clk),
+        .x_raw   (joystick_x_raw),
+        .y_raw   (joystick_y_raw),
+
+        // Botao ainda nao esta conectado.
+        .sw_n    (1'b1),
+
+        .x_menos (joystick_x_menos),
+        .x_mais  (joystick_x_mais),
+        .y_menos (joystick_y_menos),
+        .y_mais  (joystick_y_mais),
+        .botao   ()
+    );
+
+    // LD0=X-, LD1=X+, LD2=Y-, LD3=Y+.
+    // Diagnostico temporario:
+    // LD3..LD0 mostram x_raw[11:8].
+    assign JOY_LED[0] = joystick_x_menos;
+    assign JOY_LED[1] = joystick_x_mais;
+    assign JOY_LED[2] = joystick_y_menos;
+    assign JOY_LED[3] = joystick_y_mais;
 
     wire pixel_clk;
     wire declutter;

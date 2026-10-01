@@ -95,3 +95,21 @@ set_property -dict { PACKAGE_PIN H1    IOSTANDARD LVCMOS33 } [get_ports { Bout }
 #set_property -dict { PACKAGE_PIN F3    IOSTANDARD LVCMOS33 } [get_ports { JD[10] }]; #IO_L13N_T2_MRCC_35 Sch=jd[10]
 
 
+
+## =========================================================
+## KY-023 - Joystick analogico via JXADC
+## =========================================================
+
+# JXADC1 / JXADC7 = VAUX3
+set_property -dict { PACKAGE_PIN A13 IOSTANDARD LVCMOS33 } [get_ports { vauxp3 }]
+set_property -dict { PACKAGE_PIN A14 IOSTANDARD LVCMOS33 } [get_ports { vauxn3 }]
+
+# JXADC2 / JXADC8 = VAUX10
+set_property -dict { PACKAGE_PIN A15 IOSTANDARD LVCMOS33 } [get_ports { vauxp10 }]
+set_property -dict { PACKAGE_PIN A16 IOSTANDARD LVCMOS33 } [get_ports { vauxn10 }]
+
+# LEDs temporarios para validacao dos quatro sentidos.
+set_property -dict { PACKAGE_PIN H17 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[0] }]
+set_property -dict { PACKAGE_PIN K15 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[1] }]
+set_property -dict { PACKAGE_PIN J13 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[2] }]
+set_property -dict { PACKAGE_PIN N14 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[3] }]
