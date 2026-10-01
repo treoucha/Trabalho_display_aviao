@@ -71,8 +71,7 @@ module top_reticula (
     );
 
     // LD0=X-, LD1=X+, LD2=Y-, LD3=Y+.
-    // Diagnostico temporario:
-    // LD3..LD0 mostram x_raw[11:8].
+    // Diagnostico temporario das quatro direcoes.
     assign JOY_LED[0] = joystick_x_menos;
     assign JOY_LED[1] = joystick_x_mais;
     assign JOY_LED[2] = joystick_y_menos;
@@ -106,21 +105,38 @@ module top_reticula (
         roll_sync <= roll_meta;
     end
 
-    // Fonte simulada a 100 MHz. Substituir por dados processados nesse domínio.
+    // Pitch comandado pelo joystick.
+    // Joystick para cima = nariz para cima.
+    // Os switches continuam como fallback de teste.
     always_comb begin
-        case (horizonte_sync)
-            2'b01: pitch_px_entrada = -11'sd40;
-            2'b10: pitch_px_entrada = 11'sd40;
-            default: pitch_px_entrada = 11'sd0;
-        endcase
+        if (joystick_y_mais)
+            pitch_px_entrada = 11'sd40;
+        else if (joystick_y_menos)
+            pitch_px_entrada = -11'sd40;
+        else begin
+            case (horizonte_sync)
+                2'b01: pitch_px_entrada = -11'sd40;
+                2'b10: pitch_px_entrada =  11'sd40;
+                default: pitch_px_entrada = 11'sd0;
+            endcase
+        end
     end
 
+    // Roll comandado pelo joystick.
+    // Joystick para esquerda/direita inclina o horizonte.
+    // Os switches continuam como fallback de teste.
     always_comb begin
-        case (roll_sync)
-            2'b01: roll_q8_entrada = -10'sd64; // SW14: inclina para esquerda
-            2'b10: roll_q8_entrada =  10'sd64; // SW15: inclina para direita
-            default: roll_q8_entrada = 10'sd0;
-        endcase
+        if (joystick_x_menos)
+            roll_q8_entrada = -10'sd64;
+        else if (joystick_x_mais)
+            roll_q8_entrada = 10'sd64;
+        else begin
+            case (roll_sync)
+                2'b01: roll_q8_entrada = -10'sd64;
+                2'b10: roll_q8_entrada =  10'sd64;
+                default: roll_q8_entrada = 10'sd0;
+            endcase
+        end
     end
 
     wire [56:0] amostra_pixel;
