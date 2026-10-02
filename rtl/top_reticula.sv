@@ -57,8 +57,8 @@ module top_reticula (
 
     controle_joystick u_controle_joystick (
         .clk     (clk),
-        .x_raw   (joystick_x_raw),
-        .y_raw   (joystick_y_raw),
+        .x_raw   (joystick_y_raw),
+        .y_raw   (joystick_x_raw),
 
         // Botao ainda nao esta conectado.
         .sw_n    (1'b1),
