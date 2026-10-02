@@ -57,6 +57,7 @@ module top_reticula (
 
     controle_joystick u_controle_joystick (
         .clk     (clk),
+        // Orientacao observada na placa: frente aumenta X; direita aumenta Y.
         .x_raw   (joystick_y_raw),
         .y_raw   (joystick_x_raw),
 
@@ -109,9 +110,9 @@ module top_reticula (
     // Joystick para cima = nariz para cima.
     // Os switches continuam como fallback de teste.
     always_comb begin
-        if (joystick_y_mais)
+        if (joystick_x_mais)
             pitch_px_entrada = 11'sd40;
-        else if (joystick_y_menos)
+        else if (joystick_x_menos)
             pitch_px_entrada = -11'sd40;
         else begin
             case (horizonte_sync)
@@ -126,9 +127,9 @@ module top_reticula (
     // Joystick para esquerda/direita inclina o horizonte.
     // Os switches continuam como fallback de teste.
     always_comb begin
-        if (joystick_x_menos)
+        if (joystick_y_menos)
             roll_q8_entrada = -10'sd64;
-        else if (joystick_x_mais)
+        else if (joystick_y_mais)
             roll_q8_entrada = 10'sd64;
         else begin
             case (roll_sync)
