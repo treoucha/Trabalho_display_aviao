@@ -202,10 +202,15 @@ module top_reticula (
     logic       sensor_ok;
     logic       sensor_awake;
     logic       imu_dados_validos;
+    logic       imu_amostra_nova;
 
     logic signed [15:0] accel_x_raw;
     logic signed [15:0] accel_y_raw;
     logic signed [15:0] accel_z_raw;
+
+    logic signed [15:0] accel_x_filtrado;
+    logic signed [15:0] accel_y_filtrado;
+    logic signed [15:0] accel_z_filtrado;
 
     logic [1:0] etapa_calibracao;
     logic       atitude_calibrada;
@@ -243,10 +248,26 @@ module top_reticula (
         .sensor_ok     (sensor_ok),
         .sensor_awake  (sensor_awake),
         .dados_validos (imu_dados_validos),
+        .amostra_nova  (imu_amostra_nova),
 
         .accel_x       (accel_x_raw),
         .accel_y       (accel_y_raw),
         .accel_z       (accel_z_raw)
+    );
+
+    filtro_accel #(
+        .SHIFT (2)
+    ) u_filtro_accel (
+        .clk          (clk),
+        .amostra_nova (imu_amostra_nova),
+
+        .x_in         (accel_x_raw),
+        .y_in         (accel_y_raw),
+        .z_in         (accel_z_raw),
+
+        .x_out        (accel_x_filtrado),
+        .y_out        (accel_y_filtrado),
+        .z_out        (accel_z_filtrado)
     );
 
     calibracao_atitude u_calibracao (
@@ -254,9 +275,9 @@ module top_reticula (
         .btn_cal        (btn_cal),
         .dados_validos  (imu_dados_validos),
 
-        .accel_x        (accel_x_raw),
-        .accel_y        (accel_y_raw),
-        .accel_z        (accel_z_raw),
+        .accel_x        (accel_x_filtrado),
+        .accel_y        (accel_y_filtrado),
+        .accel_z        (accel_z_filtrado),
 
         .etapa          (etapa_calibracao),
         .calibrado      (atitude_calibrada),
@@ -274,9 +295,9 @@ module top_reticula (
     atitude_accel u_atitude_accel (
         .calibrado      (atitude_calibrada),
 
-        .accel_x        (accel_x_raw),
-        .accel_y        (accel_y_raw),
-        .accel_z        (accel_z_raw),
+        .accel_x        (accel_x_filtrado),
+        .accel_y        (accel_y_filtrado),
+        .accel_z        (accel_z_filtrado),
 
         .referencia_x   (referencia_x_sensor),
         .referencia_y   (referencia_y_sensor),

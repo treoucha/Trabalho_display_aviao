@@ -25,6 +25,7 @@ module mpu_inercial_i2c #(
     output logic sensor_ok = 1'b0,
     output logic sensor_awake = 1'b0,
     output logic dados_validos = 1'b0,
+    output logic amostra_nova = 1'b0,
 
     output logic signed [15:0] accel_x = 16'sd0,
     output logic signed [15:0] accel_y = 16'sd0,
@@ -98,6 +99,10 @@ module mpu_inercial_i2c #(
 
         if (tick) begin
             div_count <= 16'd0;
+
+            // Fica ativo por um intervalo de tick quando
+            // um conjunto completo AX/AY/AZ foi recebido.
+            amostra_nova <= 1'b0;
 
             case (state)
 
@@ -394,6 +399,7 @@ module mpu_inercial_i2c #(
                             CMD_AZ_L: begin
                                 accel_z[7:0] <= rx_data;
                                 dados_validos <= 1'b1;
+                                amostra_nova <= 1'b1;
                                 cmd <= CMD_AX_H;
                             end
 
