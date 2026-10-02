@@ -6,6 +6,7 @@
 module top_reticula (
     input  logic        clk,
     input  logic [1:0]  btn_heading,  // BTNU=+10, BTND=-10
+    input  logic        btn_cal,      // BTNC: calibracao da atitude
     input  logic [15:12] sw,        // pitch e roll
     input  logic        display_mode, // SW0: 0=NORMAL, 1=DECLUTTER
 
@@ -198,19 +199,25 @@ module top_reticula (
     logic signed [15:0] accel_y_raw;
     logic signed [15:0] accel_z_raw;
 
-    // Diagnostico temporario:
-    // SW13 SW12
-    //   00 = nibble mais significativo de AX
-    //   01 = nibble mais significativo de AY
-    //   10 = nibble mais significativo de AZ
-    //   11 = status: LD2=dados, LD1=acordado, LD0=sensor_ok
+    logic [1:0] etapa_calibracao;
+    logic       atitude_calibrada;
+    logic [1:0] eixo_pitch_sensor;
+    logic [1:0] eixo_roll_sensor;
+    logic       inverte_pitch_sensor;
+    logic       inverte_roll_sensor;
+
+    // LEDs da calibracao:
+    // 0001 = coloque o sensor reto
+    // 0010 = levante a frente
+    // 0100 = incline o lado direito para baixo
+    // 1000 = calibracao concluida
     assign JOY_LED =
-        (sw[13:12] == 2'b00) ? accel_x_raw[15:12] :
-        (sw[13:12] == 2'b01) ? accel_y_raw[15:12] :
-        (sw[13:12] == 2'b10) ? accel_z_raw[15:12] :
-                               {1'b0, imu_dados_validos,
-                                      sensor_awake,
-                                      sensor_ok};
+        !sensor_ok          ? 4'b1111 :
+        !imu_dados_validos  ? 4'b0000 :
+        atitude_calibrada   ? 4'b1000 :
+        (etapa_calibracao == 2'd0) ? 4'b0001 :
+        (etapa_calibracao == 2'd1) ? 4'b0010 :
+                                     4'b0100;
 
     mpu_inercial_i2c u_sensor (
         .clk           (clk),
@@ -225,6 +232,24 @@ module top_reticula (
         .accel_x       (accel_x_raw),
         .accel_y       (accel_y_raw),
         .accel_z       (accel_z_raw)
+    );
+
+    calibracao_atitude u_calibracao (
+        .clk            (clk),
+        .btn_cal        (btn_cal),
+        .dados_validos  (imu_dados_validos),
+
+        .accel_x        (accel_x_raw),
+        .accel_y        (accel_y_raw),
+        .accel_z        (accel_z_raw),
+
+        .etapa          (etapa_calibracao),
+        .calibrado      (atitude_calibrada),
+
+        .eixo_pitch     (eixo_pitch_sensor),
+        .eixo_roll      (eixo_roll_sensor),
+        .inverte_pitch  (inverte_pitch_sensor),
+        .inverte_roll   (inverte_roll_sensor)
     );
 
     // -----------------------------------------------------

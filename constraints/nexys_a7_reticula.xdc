@@ -121,3 +121,13 @@ set_property -dict { PACKAGE_PIN H2 IOSTANDARD LVCMOS33 } [get_ports { i2c_scl }
 
 # JD8 = SDA
 set_property -dict { PACKAGE_PIN G4 IOSTANDARD LVCMOS33 } [get_ports { i2c_sda }]
+
+## =========================================================
+## BTNC - calibracao automatica do sensor inercial
+## Master XDC oficial Nexys A7-100T
+## =========================================================
+
+set_property -dict { PACKAGE_PIN N17 IOSTANDARD LVCMOS33 } [get_ports { btn_cal }]
+
+set_false_path -from [get_ports btn_cal] \
+    -to [get_pins -hier -filter {NAME =~ u_calibracao/btn_meta_reg*/D}]
