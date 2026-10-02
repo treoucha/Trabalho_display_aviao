@@ -29,7 +29,11 @@ module mpu_inercial_i2c #(
 
     output logic signed [15:0] accel_x = 16'sd0,
     output logic signed [15:0] accel_y = 16'sd0,
-    output logic signed [15:0] accel_z = 16'sd0
+    output logic signed [15:0] accel_z = 16'sd0,
+
+    output logic signed [15:0] gyro_x = 16'sd0,
+    output logic signed [15:0] gyro_y = 16'sd0,
+    output logic signed [15:0] gyro_z = 16'sd0
 );
 
     logic sda_low = 1'b0;
@@ -75,7 +79,13 @@ module mpu_inercial_i2c #(
         CMD_AY_H,
         CMD_AY_L,
         CMD_AZ_H,
-        CMD_AZ_L
+        CMD_AZ_L,
+        CMD_GX_H,
+        CMD_GX_L,
+        CMD_GY_H,
+        CMD_GY_L,
+        CMD_GZ_H,
+        CMD_GZ_L
     } cmd_t;
 
     state_t state = ST_IDLE;
@@ -101,7 +111,7 @@ module mpu_inercial_i2c #(
             div_count <= 16'd0;
 
             // Fica ativo por um intervalo de tick quando
-            // um conjunto completo AX/AY/AZ foi recebido.
+            // um conjunto completo AX/AY/AZ/GX/GY/GZ foi recebido.
             amostra_nova <= 1'b0;
 
             case (state)
@@ -158,6 +168,36 @@ module mpu_inercial_i2c #(
 
                             CMD_AZ_L: begin
                                 reg_addr <= 8'h40;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GX_H: begin
+                                reg_addr <= 8'h43;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GX_L: begin
+                                reg_addr <= 8'h44;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GY_H: begin
+                                reg_addr <= 8'h45;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GY_L: begin
+                                reg_addr <= 8'h46;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GZ_H: begin
+                                reg_addr <= 8'h47;
+                                op_read  <= 1'b1;
+                            end
+
+                            CMD_GZ_L: begin
+                                reg_addr <= 8'h48;
                                 op_read  <= 1'b1;
                             end
 
@@ -398,8 +438,42 @@ module mpu_inercial_i2c #(
 
                             CMD_AZ_L: begin
                                 accel_z[7:0] <= rx_data;
+                                cmd <= CMD_GX_H;
+                            end
+
+                            CMD_GX_H: begin
+                                gyro_x[15:8] <= rx_data;
+                                cmd <= CMD_GX_L;
+                            end
+
+                            CMD_GX_L: begin
+                                gyro_x[7:0] <= rx_data;
+                                cmd <= CMD_GY_H;
+                            end
+
+                            CMD_GY_H: begin
+                                gyro_y[15:8] <= rx_data;
+                                cmd <= CMD_GY_L;
+                            end
+
+                            CMD_GY_L: begin
+                                gyro_y[7:0] <= rx_data;
+                                cmd <= CMD_GZ_H;
+                            end
+
+                            CMD_GZ_H: begin
+                                gyro_z[15:8] <= rx_data;
+                                cmd <= CMD_GZ_L;
+                            end
+
+                            CMD_GZ_L: begin
+                                gyro_z[7:0] <= rx_data;
+
+                                // Conjunto completo:
+                                // AX AY AZ GX GY GZ.
                                 dados_validos <= 1'b1;
-                                amostra_nova <= 1'b1;
+                                amostra_nova  <= 1'b1;
+
                                 cmd <= CMD_AX_H;
                             end
 

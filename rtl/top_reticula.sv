@@ -208,6 +208,14 @@ module top_reticula (
     logic signed [15:0] accel_y_raw;
     logic signed [15:0] accel_z_raw;
 
+    logic signed [15:0] gyro_x_raw;
+    logic signed [15:0] gyro_y_raw;
+    logic signed [15:0] gyro_z_raw;
+
+    logic gyro_x_ativo;
+    logic gyro_y_ativo;
+    logic gyro_z_ativo;
+
     logic signed [15:0] accel_x_filtrado;
     logic signed [15:0] accel_y_filtrado;
     logic signed [15:0] accel_z_filtrado;
@@ -226,15 +234,40 @@ module top_reticula (
     logic signed [10:0] pitch_sensor;
     logic signed [9:0]  roll_sensor;
 
-    // LEDs da calibracao:
-    // 0001 = coloque o sensor reto
-    // 0010 = levante a frente
-    // 0100 = incline o lado direito para baixo
-    // 1000 = calibracao concluida
+    // Atividade do giroscopio.
+    // O limiar evita acender os LEDs apenas pelo pequeno offset
+    // existente quando o sensor esta parado.
+    always_comb begin
+        gyro_x_ativo =
+            (gyro_x_raw > 16'sd700) ||
+            (gyro_x_raw < -16'sd700);
+
+        gyro_y_ativo =
+            (gyro_y_raw > 16'sd700) ||
+            (gyro_y_raw < -16'sd700);
+
+        gyro_z_ativo =
+            (gyro_z_raw > 16'sd700) ||
+            (gyro_z_raw < -16'sd700);
+    end
+
+    // Antes da calibracao:
+    // 0001 = reto
+    // 0010 = frente para cima
+    // 0100 = direita para baixo
+    //
+    // Depois da calibracao:
+    // LD3 = calibracao concluida
+    // LD2 = atividade GZ
+    // LD1 = atividade GY
+    // LD0 = atividade GX
     assign JOY_LED =
-        !sensor_ok          ? 4'b1111 :
-        !imu_dados_validos  ? 4'b0000 :
-        atitude_calibrada   ? 4'b1000 :
+        !sensor_ok         ? 4'b1111 :
+        !imu_dados_validos ? 4'b0000 :
+        atitude_calibrada  ? {1'b1,
+                              gyro_z_ativo,
+                              gyro_y_ativo,
+                              gyro_x_ativo} :
         (etapa_calibracao == 2'd0) ? 4'b0001 :
         (etapa_calibracao == 2'd1) ? 4'b0010 :
                                      4'b0100;
@@ -252,7 +285,11 @@ module top_reticula (
 
         .accel_x       (accel_x_raw),
         .accel_y       (accel_y_raw),
-        .accel_z       (accel_z_raw)
+        .accel_z       (accel_z_raw),
+
+        .gyro_x        (gyro_x_raw),
+        .gyro_y        (gyro_y_raw),
+        .gyro_z        (gyro_z_raw)
     );
 
     filtro_accel #(
