@@ -35,7 +35,6 @@ set_property -dict { PACKAGE_PIN B12 IOSTANDARD LVCMOS33 } [get_ports { VGA_VS }
 ## SEN-10955 / MMA8452Q - I2C
 ## =========================================================
 
-set_property -dict { PACKAGE_PIN C17 IOSTANDARD LVCMOS33 } [get_ports { i2c_sda }]; #JA1 - SDA
 
 # set_property -dict { PACKAGE_PIN D18 IOSTANDARD LVCMOS33 } [get_ports { JA[2] }]; #IO_L21N_T3_DQS_A18_15 Sch=ja[2]
 
@@ -43,7 +42,6 @@ set_property -dict { PACKAGE_PIN C17 IOSTANDARD LVCMOS33 } [get_ports { i2c_sda 
 
 # set_property -dict { PACKAGE_PIN G17 IOSTANDARD LVCMOS33 } [get_ports { JA[4] }]; #IO_L18N_T2_A23_15 Sch=ja[4]
 
-set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { i2c_scl }]; #JA7 - SCL
 
 # set_property -dict { PACKAGE_PIN E17 IOSTANDARD LVCMOS33 } [get_ports { JA[8] }]; #IO_L16P_T2_A28_15 Sch=ja[8]
 
@@ -113,3 +111,13 @@ set_property -dict { PACKAGE_PIN H17 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[
 set_property -dict { PACKAGE_PIN K15 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[1] }]
 set_property -dict { PACKAGE_PIN J13 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[2] }]
 set_property -dict { PACKAGE_PIN N14 IOSTANDARD LVCMOS33 } [get_ports { JOY_LED[3] }]
+
+## =========================================================
+## GY-521 / MPU-6050 - I2C no JD
+## =========================================================
+
+# JD7 = SCL
+set_property -dict { PACKAGE_PIN H2 IOSTANDARD LVCMOS33 } [get_ports { i2c_scl }]
+
+# JD8 = SDA
+set_property -dict { PACKAGE_PIN G4 IOSTANDARD LVCMOS33 } [get_ports { i2c_sda }]

@@ -70,12 +70,8 @@ module top_reticula (
         .botao   ()
     );
 
-    // LD0=X-, LD1=X+, LD2=Y-, LD3=Y+.
-    // Diagnostico temporario das quatro direcoes.
-    assign JOY_LED[0] = joystick_x_menos;
-    assign JOY_LED[1] = joystick_x_mais;
-    assign JOY_LED[2] = joystick_y_menos;
-    assign JOY_LED[3] = joystick_y_mais;
+    // Os LEDs do joystick ficam livres temporariamente
+    // para diagnostico do MPU-6050.
 
     wire pixel_clk;
     wire declutter;
@@ -190,13 +186,17 @@ module top_reticula (
     logic alvo;
 
     // -----------------------------------------------------
-    // SEN-10955 / MMA8452Q
+    // GY-521 / MPU-6050
     // -----------------------------------------------------
 
     logic [7:0] sensor_id;
     logic       sensor_ok;
 
-    mma8452_i2c u_sensor (
+    // Diagnostico temporario do WHO_AM_I do MPU-6050.
+    // SW12=0: nibble baixo. SW12=1: nibble alto.
+    assign JOY_LED = sw[12] ? sensor_id[7:4] : sensor_id[3:0];
+
+    mpu6050_i2c u_sensor (
         .clk       (clk),
         .i2c_sda   (i2c_sda),
         .i2c_scl   (i2c_scl),
