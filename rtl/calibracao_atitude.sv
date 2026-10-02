@@ -34,12 +34,13 @@ module calibracao_atitude #(
     output logic [1:0] eixo_roll  = 2'd1,
 
     output logic inverte_pitch = 1'b0,
-    output logic inverte_roll  = 1'b0
+    output logic inverte_roll  = 1'b0,
+
+    output logic signed [15:0] referencia_x = 16'sd0,
+    output logic signed [15:0] referencia_y = 16'sd0,
+    output logic signed [15:0] referencia_z = 16'sd0
 );
 
-    logic signed [15:0] ref_x = 16'sd0;
-    logic signed [15:0] ref_y = 16'sd0;
-    logic signed [15:0] ref_z = 16'sd0;
 
     logic signed [16:0] dx;
     logic signed [16:0] dy;
@@ -50,13 +51,13 @@ module calibracao_atitude #(
     logic [16:0] abs_dz;
 
     assign dx = $signed({accel_x[15], accel_x})
-              - $signed({ref_x[15], ref_x});
+              - $signed({referencia_x[15], referencia_x});
 
     assign dy = $signed({accel_y[15], accel_y})
-              - $signed({ref_y[15], ref_y});
+              - $signed({referencia_y[15], referencia_y});
 
     assign dz = $signed({accel_z[15], accel_z})
-              - $signed({ref_z[15], ref_z});
+              - $signed({referencia_z[15], referencia_z});
 
     assign abs_dx = dx[16] ? -dx : dx;
     assign abs_dy = dy[16] ? -dy : dy;
@@ -110,9 +111,9 @@ module calibracao_atitude #(
 
                 // Sensor reto: salva a referencia.
                 2'd0: begin
-                    ref_x <= accel_x;
-                    ref_y <= accel_y;
-                    ref_z <= accel_z;
+                    referencia_x <= accel_x;
+                    referencia_y <= accel_y;
+                    referencia_z <= accel_z;
 
                     etapa <= 2'd1;
                 end
