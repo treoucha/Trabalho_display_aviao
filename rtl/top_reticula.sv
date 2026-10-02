@@ -191,17 +191,40 @@ module top_reticula (
 
     logic [7:0] sensor_id;
     logic       sensor_ok;
+    logic       sensor_awake;
+    logic       imu_dados_validos;
 
-    // Diagnostico temporario do WHO_AM_I do MPU-6050.
-    // SW12=0: nibble baixo. SW12=1: nibble alto.
-    assign JOY_LED = sw[12] ? sensor_id[7:4] : sensor_id[3:0];
+    logic signed [15:0] accel_x_raw;
+    logic signed [15:0] accel_y_raw;
+    logic signed [15:0] accel_z_raw;
 
-    mpu6050_i2c u_sensor (
-        .clk       (clk),
-        .i2c_sda   (i2c_sda),
-        .i2c_scl   (i2c_scl),
-        .who_am_i  (sensor_id),
-        .sensor_ok (sensor_ok)
+    // Diagnostico temporario:
+    // SW13 SW12
+    //   00 = nibble mais significativo de AX
+    //   01 = nibble mais significativo de AY
+    //   10 = nibble mais significativo de AZ
+    //   11 = status: LD2=dados, LD1=acordado, LD0=sensor_ok
+    assign JOY_LED =
+        (sw[13:12] == 2'b00) ? accel_x_raw[15:12] :
+        (sw[13:12] == 2'b01) ? accel_y_raw[15:12] :
+        (sw[13:12] == 2'b10) ? accel_z_raw[15:12] :
+                               {1'b0, imu_dados_validos,
+                                      sensor_awake,
+                                      sensor_ok};
+
+    mpu_inercial_i2c u_sensor (
+        .clk           (clk),
+        .i2c_sda       (i2c_sda),
+        .i2c_scl       (i2c_scl),
+
+        .who_am_i      (sensor_id),
+        .sensor_ok     (sensor_ok),
+        .sensor_awake  (sensor_awake),
+        .dados_validos (imu_dados_validos),
+
+        .accel_x       (accel_x_raw),
+        .accel_y       (accel_y_raw),
+        .accel_z       (accel_z_raw)
     );
 
     // -----------------------------------------------------
@@ -280,13 +303,13 @@ module top_reticula (
     assign VGA_R =
         retic                         ? 4'h0 :
         alvo                          ? 4'hF :
-        (sensor_status && !declutter && !sensor_ok) ? 4'hF :
+        (sensor_status && !declutter && !(sensor_ok && sensor_awake && imu_dados_validos)) ? 4'hF :
                                         4'h0;
 
     assign VGA_G =
         retic                              ? 4'hF :
         (horizonte || (!declutter && (altitude || velocidade || direcao || numeros))) ? 4'hF :
-        (sensor_status && !declutter && sensor_ok)        ? 4'hF :
+        (sensor_status && !declutter && sensor_ok && sensor_awake && imu_dados_validos)        ? 4'hF :
                                              4'h0;
 
     assign VGA_B = 4'h0;
