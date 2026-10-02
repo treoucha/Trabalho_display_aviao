@@ -6,7 +6,7 @@
 module top_reticula (
     input  logic        clk,
     input  logic [1:0]  btn_heading,  // BTNU=+10, BTND=-10
-    input  logic [15:12] sw,        // pitch e roll
+    input  logic [15:12] sw,        // reservados; atitude vem do MPU6050
     input  logic        display_mode, // SW0: 0=NORMAL, 1=DECLUTTER
 
     inout  wire         i2c_sda,
@@ -32,42 +32,13 @@ module top_reticula (
         .declutter(declutter)
     );
 
-    (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_meta = '0;
-    (* ASYNC_REG = "TRUE" *) logic [1:0] horizonte_sync = '0;
-    (* ASYNC_REG = "TRUE" *) logic [1:0] roll_meta = '0;
-    (* ASYNC_REG = "TRUE" *) logic [1:0] roll_sync = '0;
     wire [9:0] horizonte_y;
     wire signed [9:0] roll_q8;
     wire [9:0] velocidade_kt;
     wire [16:0] altitude_ft;
     wire [8:0] heading_deg;
-    logic signed [10:0] pitch_px_entrada;
-    logic signed [9:0] roll_q8_entrada;
-
-    always_ff @(posedge clk) begin
-        horizonte_meta <= sw[13:12];
-        horizonte_sync <= horizonte_meta;
-
-        roll_meta <= sw[15:14];
-        roll_sync <= roll_meta;
-    end
-
-    // Fonte simulada a 100 MHz. Substituir por dados processados nesse domínio.
-    always_comb begin
-        case (horizonte_sync)
-            2'b01: pitch_px_entrada = -11'sd40;
-            2'b10: pitch_px_entrada = 11'sd40;
-            default: pitch_px_entrada = 11'sd0;
-        endcase
-    end
-
-    always_comb begin
-        case (roll_sync)
-            2'b01: roll_q8_entrada = -10'sd64; // SW14: inclina para esquerda
-            2'b10: roll_q8_entrada =  10'sd64; // SW15: inclina para direita
-            default: roll_q8_entrada = 10'sd0;
-        endcase
-    end
+    wire signed [10:0] pitch_px_entrada;
+    wire signed [9:0] roll_q8_entrada;
 
     wire [56:0] amostra_pixel;
     wire amostra_valida;
@@ -79,7 +50,8 @@ module top_reticula (
         .btn         (btn_heading),
         .heading_deg (heading_entrada)
     );
-    // Ordem: velocidade(10), altitude(17), pitch(11), roll(10), heading(9)..
+    // Mantém a última atitude e transmite também alterações de heading.
+    // Ordem: velocidade(10), altitude(17), pitch(11), roll(10), heading(9).
     entrada_hud u_entrada (
         .clk_origem(clk), .clk_destino(pixel_clk),
         .valido(1'b1),
@@ -120,19 +92,31 @@ module top_reticula (
     logic alvo;
 
     // -----------------------------------------------------
-    // SEN-10955 / MMA8452Q
+    // MPU6050: leituras completas a 100 MHz.
     // -----------------------------------------------------
-
-    logic [7:0] sensor_id;
-    logic       sensor_ok;
-
-    mma8452_i2c u_sensor (
-        .clk       (clk),
-        .i2c_sda   (i2c_sda),
-        .i2c_scl   (i2c_scl),
-        .who_am_i  (sensor_id),
-        .sensor_ok (sensor_ok)
+    wire [7:0] sensor_id;
+    wire sensor_ok, sensor_amostra, calibrado, atitude_ok, nova_atitude;
+    wire signed [15:0] ax, ay, az, gx, gy, gz;
+    mpu6050_i2c u_sensor (
+        .clk(clk), .i2c_sda(i2c_sda), .i2c_scl(i2c_scl),
+        .who_am_i(sensor_id), .sensor_ok(sensor_ok), .amostra_valida(sensor_amostra),
+        .accel_x(ax), .accel_y(ay), .accel_z(az),
+        .gyro_x(gx), .gyro_y(gy), .gyro_z(gz)
     );
+    atitude_mpu6050 u_atitude (
+        .clk(clk), .sensor_ok(sensor_ok), .amostra_valida(sensor_amostra),
+        .accel_x(ax), .accel_y(ay), .accel_z(az),
+        .gyro_x(gx), .gyro_y(gy), .gyro_z(gz),
+        .calibrado(calibrado), .atitude_ok(atitude_ok), .nova_atitude(nova_atitude),
+        .pitch_px(pitch_px_entrada), .roll_q8(roll_q8_entrada)
+    );
+    (* ASYNC_REG = "TRUE" *) logic status_meta = 0, status_sync = 0;
+    logic sensor_pronto = 0;
+    always_ff @(posedge pixel_clk) begin
+        status_meta <= sensor_ok && atitude_ok && calibrado;
+        status_sync <= status_meta;
+        if (pixel_x == 0 && pixel_y == 480) sensor_pronto <= status_sync;
+    end
 
     // -----------------------------------------------------
     // VGA
@@ -153,7 +137,7 @@ module top_reticula (
     // -----------------------------------------------------
 
     reticula_vga #(
-        .ESPESSURA   (2),
+        .ESPESSURA   (1),
         .TAMANHO     (40),
         .VAO_CENTRAL (6)
     ) u_retic (
@@ -188,8 +172,7 @@ module top_reticula (
     // -----------------------------------------------------
     // Indicador do sensor
     //
-    // Vermelho = sensor não reconhecido
-    // Verde = WHO_AM_I == 0x2A
+    // Vermelho = sem atitude válida ou calibrando; verde = pronto.
     // -----------------------------------------------------
 
     logic sensor_status;
@@ -210,13 +193,13 @@ module top_reticula (
     assign VGA_R =
         retic                         ? 4'h0 :
         alvo                          ? 4'hF :
-        (sensor_status && !declutter && !sensor_ok) ? 4'hF :
+        (sensor_status && !declutter && !sensor_pronto) ? 4'hF :
                                         4'h0;
 
     assign VGA_G =
         retic                              ? 4'hF :
         (horizonte || (!declutter && (altitude || velocidade || direcao || numeros))) ? 4'hF :
-        (sensor_status && !declutter && sensor_ok)        ? 4'hF :
+        (sensor_status && !declutter && sensor_pronto)        ? 4'hF :
                                              4'h0;
 
     assign VGA_B = 4'h0;

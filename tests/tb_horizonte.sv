@@ -11,15 +11,16 @@ module tb_horizonte;
     task ciclos;
         repeat(16) @(negedge dut.pixel_clk);
     endtask
-    task testar(input logic [1:0] posicao, input int esperado);
+    logic signed [10:0] pitch_teste;
+    task testar(input integer posicao, input int esperado);
         logic [9:0] anterior;
         anterior=dut.horizonte_y;
         force dut.u_vga.h_cont=100; force dut.u_vga.v_cont=100;
-        sw[13:12]=posicao; ciclos();
+        pitch_teste=11'(posicao); force dut.pitch_px_entrada=pitch_teste; force dut.roll_q8_entrada=0; ciclos();
         if(dut.horizonte_y !== anterior) $fatal(1,"Posição mudou durante região ativa");
         force dut.u_vga.h_cont=0; force dut.u_vga.v_cont=480; ciclos();
         if(dut.horizonte_y !== 10'(esperado))
-            $fatal(1,"SW13..12=%b: obtido y=%0d esperado=%0d",posicao,dut.horizonte_y,esperado);
+            $fatal(1,"Pitch=%0d: obtido y=%0d esperado=%0d",posicao,dut.horizonte_y,esperado);
         // Amostra os limites da linha e os dois lados do vão.
         force dut.u_vga.h_cont=100;
         amostra_y=dut.horizonte_y-10'd2; force dut.u_vga.v_cont=amostra_y; #1;
@@ -41,10 +42,10 @@ module tb_horizonte;
         if(dut.horizonte !== 0) $fatal(1,"Blanking: esperado apagado");
     endtask
     initial begin
-        testar(2'b00,240); testar(2'b01,200);
-        testar(2'b10,280); testar(2'b11,240);
+        testar(0,240); testar(-40,200);
+        testar(40,280); testar(0,240);
         release dut.u_vga.h_cont; release dut.u_vga.v_cont;
-        $display("PASS horizonte: quatro combinações, atualização entre quadros, bordas, vão e retículo fixo");
+        $display("PASS horizonte: quatro amostras de pitch, atualização entre quadros, bordas, vão e retículo fixo");
         $finish;
     end
 endmodule

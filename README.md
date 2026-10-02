@@ -3,21 +3,21 @@
 Display VGA 640×480 com retículo, horizonte deslocável e inclinado, escada de
 pitch, escalas de velocidade/altitude, heading em graus com N/E/S/W e alvo fixo.
 A imagem é gerada por coordenadas, sem framebuffer, a 25 MHz (aproximadamente
-59,52 Hz). Pitch, roll e heading são simulados por controles da placa;
-velocidade e altitude permanecem em 280 KT e 36000 FT.
+59,52 Hz). Pitch e roll vêm do MPU6050 após calibração de bancada. Heading continua
+nos botões; velocidade e altitude permanecem simuladas em 280 KT e 36000 FT.
 
 ## O que aparece na tela
 
 | Elemento | O que significa | Como funciona neste projeto |
 | --- | --- | --- |
-| Retículo | Cruz de referência no centro da tela, com um vão no meio. Serve como referência de apontamento. | Fica parado e verde, mesmo quando o horizonte muda. O desenho está em `rtl/reticula_vga.sv`. |
-| Horizonte artificial | Linha que representa a referência do horizonte. | Sobe, desce e inclina conforme os switches. É desenhado em `rtl/simbologia_vga.sv`. |
-| Escada de pitch | Marcas que ajudam a visualizar a atitude de nariz para cima ou para baixo. | Acompanha o horizonte, com referências ±10/20/30/40 de simulação, sem calibração com sensor. |
+| Retículo | Cruz de referência no centro da tela, com um vão no meio. Serve como referência de apontamento. | Fica parado e verde, com traços de 1 pixel, mesmo quando o horizonte muda. O desenho está em `rtl/reticula_vga.sv`. |
+| Horizonte artificial | Linha que representa a referência do horizonte. | Sobe, desce e inclina conforme a estimativa do MPU6050. É desenhado em `rtl/simbologia_vga.sv`. |
+| Escada de pitch | Marcas que ajudam a visualizar a atitude de nariz para cima ou para baixo. | Acompanha o horizonte, com referências ±10/20/30/40 de simulação, sem correspondência angular calibrada dessas marcas. |
 | Escala de velocidade | Indicação à esquerda, em nós (KT). | O valor fornecido pelo projeto é fixo em 280 KT. |
 | Escala de altitude | Indicação à direita, em pés (FT). | O valor fornecido pelo projeto é fixo em 36000 FT. |
 | Heading (rumo) | Direção em graus, acompanhada das letras N/E/S/W. | Varia pelos botões BTNU e BTND, em passos de 10°. |
 | Marcador de alvo | Símbolo que representa um alvo na demonstração. | Tem posição fixa; ainda não rastreia nem trava um alvo. |
-| Indicador do sensor | Mostra se a identificação do MMA8452Q foi reconhecida. | Não representa leitura de inclinação ou movimento da aeronave. |
+| Indicador do sensor | Mostra se a atitude está pronta. | Verde após calibração; vermelho durante calibração, falha de leitura ou orientação inválida. |
 
 **Retículo e horizonte são elementos diferentes:** o retículo é a referência
 fixa central; o horizonte se desloca e inclina em relação a essa referência.
@@ -27,16 +27,12 @@ fixa central; o horizonte se desloca e inclina em relação a essa referência.
 | Controle | O que altera |
 | --- | --- |
 | SW0 | Seleciona NORMAL (desligado) ou DECLUTTER (ligado). |
-| SW12 ligado sozinho | Move o horizonte 40 pixels para cima. |
-| SW13 ligado sozinho | Move o horizonte 40 pixels para baixo. |
-| SW14 ligado sozinho | Inclina o horizonte para a esquerda. |
-| SW15 ligado sozinho | Inclina o horizonte para a direita. |
 | BTNU | Aumenta o heading em 10°. |
 | BTND | Diminui o heading em 10°. |
-| SW1 a SW11 e BTNL/BTNC/BTNR | Sem função nesta versão. |
+| SW1 a SW15 e BTNL/BTNC/BTNR | Sem função nesta versão. |
 
-SW12 e SW13 iguais mantêm o horizonte centralizado na vertical. SW14 e SW15
-iguais deixam o horizonte sem inclinação. Nenhum desses controles move o retículo.
+SW12 a SW15 permanecem no topo físico, mas não controlam mais o horizonte.
+O retículo permanece fixo; os botões de heading não alteram pitch/roll.
 
 ## Modos NORMAL / DECLUTTER (RF-08)
 
@@ -44,12 +40,12 @@ O **SW0** seleciona o modo: desligado = NORMAL; ligado = DECLUTTER.
 A entrada passa por sincronização e filtro de 10 ms; a seleção é aplicada no
 início do blanking vertical. A inicialização é NORMAL, seguida da leitura de SW0.
 
-- **NORMAL:** todos os símbolos e o indicador de identificação do sensor.
+- **NORMAL:** todos os símbolos e o indicador de estado do sensor.
 - **DECLUTTER:** retículo, horizonte com referências de pitch/roll e marcador
   de alvo. Escalas laterais, seus números, heading e indicador do sensor ficam ocultos.
 
 Esta é a definição de itens críticos adotada para a demonstração acadêmica.
-SW1..SW11 e BTNL/BTNC/BTNR ficam livres. O retículo é verde fixo;
+SW1..SW15 e BTNL/BTNC/BTNR ficam livres. O retículo é verde fixo;
 os controles de cor foram removidos. Pitch, roll e heading funcionam nos dois modos.
 
 ## Qual arquivo controla cada parte
@@ -69,10 +65,11 @@ os controles de cor foram removidos. Pitch, roll e heading funcionam nos dois mo
 | --- | --- |
 | `rtl/controle_modo.sv` | Recebe SW0, sincroniza e filtra a entrada, e aplica o modo entre quadros. |
 | `rtl/controle_heading.sv` | Recebe BTNU/BTND e calcula o heading em passos de 10°. |
-| `rtl/top_reticula.sv` | Interpreta SW12 a SW15 como pitch/roll simulados e fornece velocidade e altitude fixas. |
+| `rtl/top_reticula.sv` | Integra sensor, estimativa de atitude, heading e valores fixos de velocidade/altitude. |
 | `rtl/entrada_hud.sv` | Transfere o conjunto de dados do clock de 100 MHz para o de 25 MHz com confirmação. |
 | `rtl/dados_hud.sv` | Recebe os dados processados e aplica o conjunto entre quadros. |
-| `rtl/mma8452_i2c.sv` | Lê a identificação WHO_AM_I do sensor; não calcula a atitude da aeronave. |
+| `rtl/mpu6050_i2c.sv` | Identifica e configura o MPU6050 e publica os seis eixos juntos após cada leitura. |
+| `rtl/atitude_mpu6050.sv` | Calibra o nível, filtra a gravidade e calcula o deslocamento e a inclinação do horizonte. |
 
 ### Sinal VGA e ligação com a placa
 
@@ -83,20 +80,37 @@ os controles de cor foram removidos. Pitch, roll e heading funcionam nos dois mo
 | `scripts/build_vivado.tcl` | Cria o projeto no Vivado, inclui os arquivos RTL e gera o bitstream. |
 | `scripts/program_board.tcl` | Programa a FPGA com o bitstream gerado. |
 
-## Horizonte simulado
+## Horizonte pelo MPU6050
 
-SW12 ligado sozinho posiciona o horizonte 40 pixels acima (y=200).
-SW13 ligado sozinho posiciona 40 pixels abaixo (y=280).
-Ambos desligados ou ambos ligados mantêm y=240. O retículo permanece fixo.
-As entradas passam por dois estágios de sincronização e a posição é aplicada
-no blanking vertical. São três posições fixas, sem movimento contínuo nem
-leitura de atitude do sensor. O retículo mantém a cor verde fixa.
+Ao ligar, deixe o sensor parado e aproximadamente nivelado, com Z positivo
+(cerca de +1 g). O sistema usa 64 amostras estáveis para definir o zero.
+Aguarde o indicador ficar verde no modo NORMAL; normalmente leva cerca de
+1 a 2 segundos. Movimento durante a calibração reinicia a contagem.
 
-SW14 sozinho inclina para a esquerda; SW15 sozinho, para a direita.
-Ambos ligados ou desligados mantêm roll zero. A escada traz referências
-±10/20/30/40 que acompanham pitch e roll; são referências de simulação,
-sem calibração com sensores. BTNU aumenta heading em 10° e BTND reduz em 10°,
-com retorno circular entre 0° e 350°.
+Depois, incline devagar o módulo. X positivo em relação ao nível calibrado
+move o horizonte para baixo; Y positivo faz a linha descer para a direita.
+A montagem deve respeitar os eixos impressos no módulo. A escala é limitada
+a ±80 pixels de pitch e ±128 de inclinação Q8. O retículo continua fixo.
+As referências ±10/20/30/40 da escada são gráficas, sem calibração em graus.
+
+A estimativa usa a direção da gravidade, com filtro exponencial. O giroscópio
+verifica movimento durante a calibração; não há fusão ou integração giroscópica.
+Esta versão serve para demonstração com movimentos lentos, próxima do nível.
+Aceleração linear, vibração e movimentos rápidos podem distorcer a estimativa.
+
+Na desconexão, falta de amostras por 50 ms ou Z menor que 0,5 g, o horizonte
+mantém a última posição e o indicador fica vermelho no próximo quadro.
+Após reconectar, deixe o módulo parado novamente para recalibrar. Para mudar
+o zero manualmente, reprograme a FPGA ou desconecte e reconecte o sensor.
+No modo DECLUTTER o indicador permanece oculto, como os demais itens não críticos.
+
+Ligação: SDA em JA1/C17, SCL em JA7/D17 e GND comum. O endereço configurado
+é 0x68 (AD0 baixo). Confira alimentação e pull-ups do módulo; SDA/SCL devem
+usar níveis compatíveis com 3,3 V. Não aplique 5 V nos sinais da FPGA.
+Consulte [o fluxo de dados, a calibração e os testes](docs/entradas_hud.md).
+
+BTNU aumenta heading em 10° e BTND reduz em 10°, com retorno circular
+entre 0° e 350°. Esse rumo não é calculado pelo MPU6050.
 
 ## Escalas laterais
 
@@ -107,9 +121,9 @@ passos de 20 KT e 200 FT. Os valores atuais iniciais são 280 KT e 36000 FT,
 mostrados abaixo das barras. Esses valores são simulados.
 
 A interface aceita velocidade, altitude, deslocamento de pitch e inclinação de
-roll processados. Consulte [formatos e ligação futura do sensor](docs/entradas_hud.md).
-A transferência entre clocks já está implementada. A calibração e a conversão
-dos eixos brutos para atitude ainda dependem da montagem do sensor.
+roll processados. Consulte [os formatos e a integração do sensor](docs/entradas_hud.md).
+A transferência entre clocks preserva amostras completas; a aplicação no
+desenho ocorre entre quadros.
 
 ## GitHub, Vivado e placa: etapas separadas
 
@@ -143,7 +157,8 @@ Na raiz do repositório, com Icarus Verilog instalado:
 scripts/test.sh
 ```
 
-Os testes verificam geometria, controles e um quadro VGA completo. A imagem de
+Os testes verificam I²C, calibração, sinais dos eixos, desconexão, geometria,
+controles e quadros VGA completos. A imagem de
 simulação fica em `build/hud.ppm`.
 
 Com Vivado no PATH, para **Nexys A7-100T / xc7a100tcsg324-1**:
@@ -175,24 +190,20 @@ vivado -mode batch -source scripts/program_board.tcl
 A programação é volátil. Verifique estabilidade da imagem, vão central, modos de exibição e ausência de cor fora da área ativa. A nova versão não foi gravada
 na placa durante esta revisão.
 
-Os números antigos de utilização e timing não representam esta versão.
-Consulte [arquitetura e validação de RF-08](docs/rf08.md) para os resultados
-atuais e [a auditoria anterior](docs/auditoria.md) como registro histórico.
+Os [resultados da integração MPU6050](docs/entradas_hud.md#resultados-de-validação)
+incluem testes e implementação no Vivado. Os números antigos de utilização e
+timing não representam esta versão. Consulte [arquitetura e validação de RF-08](docs/rf08.md) como registro da versão anterior e [a auditoria anterior](docs/auditoria.md) como registro histórico.
 
-## Integração futura
+## Extensões futuras
 
-Quando o hardware estiver disponível, integrar o conversor de nível lógico
-para a interface de 5 V, um switch externo e um módulo de giroscópio/acelerômetro.
-A escolha dos modelos, alimentação, níveis, pinagem e protocolo será feita com
-os componentes em mãos. A referência a 5 V é da interface a adaptar, não uma
-instrução para aplicar 5 V diretamente aos pinos da FPGA.
-
-O código de identificação I²C existente foi preservado como extensão. Ele não
-comprova leitura de atitude nem integração do futuro módulo. Não é necessário
-ampliar essa parte para concluir RF-08. Target lock fica como design goal;
-GPS, longitude, localização, framebuffer e novos efeitos ficam fora desta etapa.
+Fusão com o giroscópio, fontes reais de velocidade/altitude e target lock
+permanecem fora desta demonstração. O leitor antigo `mma8452_i2c.sv` foi
+preservado, mas não está instanciado. Há somente um mestre no barramento I²C.
 
 ## Especificação do trabalho
+
+Texto original da proposta, preservado como referência. A integração do
+MPU6050 descrita acima é uma extensão ao escopo original.
 
 Obejetivo:
 	-Tela VGA com reticulo central

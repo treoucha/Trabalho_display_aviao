@@ -21,8 +21,8 @@ module tb_modos;
                 if(dut.video_on) begin
                     if(dut.retic) esperado=12'h0F0;
                     else begin
-                        if(dut.alvo || (quadro!=1 && dut.sensor_status && !dut.sensor_ok)) esperado[11:8]=15;
-                        if(dut.horizonte || (quadro!=1 && (dut.altitude || dut.velocidade || dut.direcao || dut.numeros || (dut.sensor_status && dut.sensor_ok)))) esperado[7:4]=15;
+                        if(dut.alvo || (quadro!=1 && dut.sensor_status && !dut.sensor_pronto)) esperado[11:8]=15;
+                        if(dut.horizonte || (quadro!=1 && (dut.altitude || dut.velocidade || dut.direcao || dut.numeros || (dut.sensor_status && dut.sensor_pronto)))) esperado[7:4]=15;
                     end
                 end
                 if({r,g,b} !== esperado)

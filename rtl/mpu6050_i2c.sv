@@ -1,13 +1,16 @@
 // MPU-6050 / GY-521: identificação, saída de sleep e leitura dos seis eixos.
 // Clock de 100 MHz; I2C open-drain de aproximadamente 100 kHz.
 module mpu6050_i2c #(
-    parameter logic [6:0] DEVICE_ADDR = 7'h68
+    parameter logic [6:0] DEVICE_ADDR = 7'h68,
+    parameter logic [15:0] STARTUP_TICKS = 16'd40000,
+    parameter logic [15:0] POLL_TICKS = 16'd4000
 )(
     input  logic clk,
     inout  wire  i2c_sda,
     inout  wire  i2c_scl,
     output logic [7:0] who_am_i = 8'h00,
     output logic sensor_ok = 1'b0,
+    output logic amostra_valida = 1'b0,
     output logic signed [15:0] accel_x = 16'sd0,
     output logic signed [15:0] accel_y = 16'sd0,
     output logic signed [15:0] accel_z = 16'sd0,
@@ -36,8 +39,6 @@ module mpu6050_i2c #(
 
     // Quatro fases de 2,5 us por bit: preparar, subir, amostrar e descer.
     localparam logic [7:0] CLK_DIV_LAST = 8'd249;
-    localparam logic [15:0] STARTUP_TICKS = 16'd40000; // 100 ms
-    localparam logic [15:0] POLL_TICKS = 16'd4000;    // 10 ms
     logic [7:0] div_count = 8'd0;
     logic [15:0] idle_count = STARTUP_TICKS;
     logic [12:0] timeout_count = 13'd0;
@@ -53,7 +54,7 @@ module mpu6050_i2c #(
     } state_t;
     state_t state = ST_IDLE;
 
-    typedef enum logic [1:0] { OP_ID, OP_WAKE, OP_DATA } operation_t;
+    typedef enum logic [2:0] { OP_ID, OP_WAKE, OP_ACCEL, OP_GYRO, OP_FILTER, OP_DATA } operation_t;
     operation_t operation = OP_ID;
     logic [7:0] tx_data = 8'h00;
     logic [7:0] rx_data = 8'h00;
@@ -63,9 +64,11 @@ module mpu6050_i2c #(
     // 0: endereço W; 1: registrador; 2: endereço R ou dado de escrita.
     logic [1:0] etapa = 2'd0;
     logic ack_error = 1'b0;
+    wire escrita = (operation != OP_ID && operation != OP_DATA);
     wire last_byte = (operation == OP_ID) || (byte_index == 4'd13);
 
     always_ff @(posedge clk) begin
+        amostra_valida <= 1'b0;
         if (div_count == CLK_DIV_LAST) begin
             div_count <= 8'd0;
             if (state != ST_IDLE)
@@ -155,6 +158,9 @@ module mpu6050_i2c #(
                                     case (operation)
                                         OP_ID: tx_data <= 8'h75;
                                         OP_WAKE: tx_data <= 8'h6B;
+                                        OP_ACCEL: tx_data <= 8'h1C;
+                                        OP_GYRO: tx_data <= 8'h1B;
+                                        OP_FILTER: tx_data <= 8'h1A;
                                         default: tx_data <= 8'h3B;
                                     endcase
                                     etapa <= 2'd1;
@@ -163,8 +169,9 @@ module mpu6050_i2c #(
                                 end
                                 2'd1: begin
                                     etapa <= 2'd2;
-                                    if (operation == OP_WAKE) begin
-                                        tx_data <= 8'h00; // PWR_MGMT_1: SLEEP=0.
+                                    if (escrita) begin
+                                        // +/-2 g, +/-250 graus/s; DLPF de 44/42 Hz.
+                                        tx_data <= (operation == OP_FILTER) ? 8'h03 : 8'h00;
                                         bit_index <= 3'd7;
                                         state <= ST_TX_LOW;
                                     end else
@@ -172,7 +179,7 @@ module mpu6050_i2c #(
                                 end
                                 default: begin
                                     bit_index <= 3'd7;
-                                    state <= (operation == OP_WAKE) ? ST_STOP_1 : ST_READ_LOW;
+                                    state <= escrita ? ST_STOP_1 : ST_READ_LOW;
                                 end
                             endcase
                         end
@@ -270,8 +277,11 @@ module mpu6050_i2c #(
                                 end
                                 OP_WAKE: begin
                                     idle_count <= STARTUP_TICKS;
-                                    operation <= OP_DATA;
+                                    operation <= OP_ACCEL;
                                 end
+                                OP_ACCEL: operation <= OP_GYRO;
+                                OP_GYRO: operation <= OP_FILTER;
+                                OP_FILTER: operation <= OP_DATA;
                                 OP_DATA: begin
                                     // Publica uma amostra completa; ignora a temperatura (6 e 7).
                                     accel_x <= $signed({samples[0], samples[1]});
@@ -281,6 +291,7 @@ module mpu6050_i2c #(
                                     gyro_y <= $signed({samples[10], samples[11]});
                                     gyro_z <= $signed({samples[12], samples[13]});
                                     sensor_ok <= 1'b1;
+                                    amostra_valida <= 1'b1;
                                 end
                                 default: operation <= OP_ID;
                             endcase

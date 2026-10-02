@@ -32,7 +32,7 @@ set_property -dict { PACKAGE_PIN B11 IOSTANDARD LVCMOS33 } [get_ports { VGA_HS }
 set_property -dict { PACKAGE_PIN B12 IOSTANDARD LVCMOS33 } [get_ports { VGA_VS }]; #Sch=vga_vs
 
 ## =========================================================
-## SEN-10955 / MMA8452Q - I2C
+## MPU6050 - I2C
 ## =========================================================
 
 set_property -dict { PACKAGE_PIN C17 IOSTANDARD LVCMOS33 } [get_ports { i2c_sda }]; #JA1 - SDA
@@ -56,17 +56,14 @@ set_property -dict { PACKAGE_PIN D17 IOSTANDARD LVCMOS33 } [get_ports { i2c_scl 
 
 # Entradas manuais assíncronas: exceção somente até o primeiro estágio.
 
+# SW12..SW15 reservados nesta versão.
 # SW12/SW13: Master XDC Nexys-A7-100T, H6/U12, ambos LVCMOS33.
 set_property -dict { PACKAGE_PIN H6 IOSTANDARD LVCMOS33 } [get_ports { sw[12] }]
 set_property -dict { PACKAGE_PIN U12 IOSTANDARD LVCMOS33 } [get_ports { sw[13] }]
-set_false_path -from [get_ports {sw[12] sw[13]}] -to [get_pins -hier -filter {NAME =~ horizonte_meta_reg*/D}]
-# SW14/SW15: controle simulado de roll.
-# SW14/SW15: controle simulado de roll
+
+# SW14/SW15: entradas reservadas.
 set_property -dict { PACKAGE_PIN U11 IOSTANDARD LVCMOS33 } [get_ports {sw[14]}]
 set_property -dict { PACKAGE_PIN V10 IOSTANDARD LVCMOS33 } [get_ports {sw[15]}]
-
-set_false_path -from [get_ports {sw[14] sw[15]}] \
-    -to [get_pins -hier -filter {NAME =~ roll_meta_reg*/D}]
 
 
 # BTNU / BTND: controle manual do heading

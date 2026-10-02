@@ -8,11 +8,27 @@ module mpu6050_i2c_tb;
     assign sda = slave_sda_low ? 1'b0 : 1'bz;
     assign scl = slave_scl_low ? 1'b0 : 1'bz;
     wire [7:0] who_am_i;
-    wire sensor_ok;
+    wire sensor_ok, amostra_valida;
+    integer published = 0;
+    reg previous_valid = 0;
+    reg [95:0] previous_axes = 0;
+    always @(negedge clk) begin
+        if (amostra_valida) begin
+            if (previous_valid || !sensor_ok)
+                $fatal(1,"Amostra: esperado pulso de um ciclo com sensor_ok");
+            published = published + 1;
+        end
+        if ({ax,ay,az,gx,gy,gz} !== previous_axes && !amostra_valida)
+            $fatal(1,"Eixos mudaram sem amostra_valida");
+        previous_axes = {ax,ay,az,gx,gy,gz};
+        previous_valid = amostra_valida;
+    end
     wire signed [15:0] ax, ay, az, gx, gy, gz;
-    mpu6050_i2c dut (
+    // Acelera apenas a espera de partida; mantém os tempos elétricos I2C.
+    localparam logic [15:0] STARTUP_TICKS = 400;
+    mpu6050_i2c #(.STARTUP_TICKS(STARTUP_TICKS)) dut (
         .clk(clk), .i2c_sda(sda), .i2c_scl(scl),
-        .who_am_i(who_am_i), .sensor_ok(sensor_ok),
+        .who_am_i(who_am_i), .sensor_ok(sensor_ok), .amostra_valida(amostra_valida),
         .accel_x(ax), .accel_y(ay), .accel_z(az),
         .gyro_x(gx), .gyro_y(gy), .gyro_z(gz)
     );
@@ -24,6 +40,7 @@ module mpu6050_i2c_tb;
     reg nack_read_address = 0;
     reg stretch = 0;
     reg awake = 0;
+    reg [2:0] configured = 0;
     reg [7:0] registers [0:255];
     reg [7:0] addr, pointer, value;
     reg master_ack;
@@ -116,15 +133,23 @@ module mpu6050_i2c_tb;
                 if (!addr[0]) begin
                     reply(1);
                     receive_byte(pointer);
-                    if (pointer != 8'h75 && pointer != 8'h6B && pointer != 8'h3B)
+                    if (pointer != 8'h75 && pointer != 8'h6B && pointer != 8'h3B && pointer != 8'h1C && pointer != 8'h1B && pointer != 8'h1A)
                         $fatal(1, "Registrador inesperado=%h", pointer);
                     reply(!nack_register);
-                    if (!nack_register && pointer == 8'h6B) begin
+                    if (!nack_register && (pointer == 8'h6B || pointer == 8'h1C || pointer == 8'h1B || pointer == 8'h1A)) begin
                         receive_byte(value);
-                        if (value !== 8'h00)
-                            $fatal(1, "PWR_MGMT_1 obtido=%h esperado=00", value);
+                        if (value !== ((pointer == 8'h1A) ? 8'h03 : 8'h00))
+                            $fatal(1, "Registrador=%h obtido=%h esperado=%h", pointer,value,((pointer == 8'h1A) ? 8'h03 : 8'h00));
                         reply(!nack_wake);
                         if (!nack_wake) begin
+                            case (pointer)
+                                8'h1C: configured[0] = 1;
+                                8'h1B: configured[1] = 1;
+                                8'h1A: configured[2] = 1;
+                            endcase
+                        end
+                        if (!nack_wake && pointer == 8'h6B) begin
+                            configured = 0;
                             awake = 1;
                             wakes = wakes + 1;
                             wake_time = $time;
@@ -139,8 +164,8 @@ module mpu6050_i2c_tb;
                                 $fatal(1, "WHO_AM_I: resposta obtida=ACK esperada=NACK");
                             identities = identities + 1;
                         end else if (pointer == 8'h3B) begin
-                            if (!awake || $time - wake_time < 100000000)
-                                $fatal(1, "Leitura antes da inicializacao ou espera de 100 ms");
+                            if (!awake || configured != 3'b111 || $time - wake_time < STARTUP_TICKS * 2500)
+                                $fatal(1, "Leitura antes da inicializacao ou espera de partida");
                             for (i = 0; i < 14; i = i + 1) begin
                                 send_byte(registers[8'h3B+i], master_ack);
                                 if (master_ack !== (i < 13))
@@ -175,7 +200,7 @@ module mpu6050_i2c_tb;
         {registers['h45], registers['h46]} = 16'hFFFF;
         {registers['h47], registers['h48]} = 16'h0102;
 
-        #125000000;
+        #25000000;
         if (sensor_ok !== 0 || starts < 2)
             $fatal(1, "Sensor ausente: status=%b tentativas=%0d", sensor_ok, starts);
         check_axes(0, 0, 0, 0, 0, 0);
@@ -226,6 +251,15 @@ module mpu6050_i2c_tb;
         nack_read_address = 0;
         wait (sensor_ok);
         $display("PASS NACK de endereco de leitura: recupera");
+
+        present = 0;
+        wait (!sensor_ok);
+        marker = published;
+        #15000000;
+        if (published != marker) $fatal(1,"Desconectado: publicou amostra");
+        present = 1;
+        wait (sensor_ok);
+        $display("PASS desconexao: sem amostras falsas e recuperacao");
 
         // Prende SCL entre transações: o timeout deve invalidar a amostra.
         @(negedge scl);

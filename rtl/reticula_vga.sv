@@ -7,7 +7,7 @@
 module reticula_vga #(
     parameter int H_RES       = 640,
     parameter int V_RES       = 480,
-    parameter int ESPESSURA   = 2,
+    parameter int ESPESSURA   = 1,
     parameter int TAMANHO     = 40,
     parameter int VAO_CENTRAL = 6
 )(
