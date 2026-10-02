@@ -106,7 +106,11 @@ module top_reticula (
     // Joystick para cima = nariz para cima.
     // Os switches continuam como fallback de teste.
     always_comb begin
-        if (joystick_y_mais)
+        // Depois da calibracao, o sensor tem prioridade total.
+        // Isso evita ruido do joystick interferindo na atitude.
+        if (atitude_calibrada)
+            pitch_px_entrada = pitch_sensor;
+        else if (joystick_y_mais)
             pitch_px_entrada = 11'sd40;
         else if (joystick_y_menos)
             pitch_px_entrada = -11'sd40;
@@ -123,7 +127,11 @@ module top_reticula (
     // Joystick para esquerda/direita inclina o horizonte.
     // Os switches continuam como fallback de teste.
     always_comb begin
-        if (joystick_x_menos)
+        // Depois da calibracao, o sensor tem prioridade total.
+        // O joystick continua disponivel antes da calibracao.
+        if (atitude_calibrada)
+            roll_q8_entrada = roll_sensor;
+        else if (joystick_x_menos)
             roll_q8_entrada = -10'sd64;
         else if (joystick_x_mais)
             roll_q8_entrada = 10'sd64;
@@ -206,6 +214,13 @@ module top_reticula (
     logic       inverte_pitch_sensor;
     logic       inverte_roll_sensor;
 
+    logic signed [15:0] referencia_x_sensor;
+    logic signed [15:0] referencia_y_sensor;
+    logic signed [15:0] referencia_z_sensor;
+
+    logic signed [10:0] pitch_sensor;
+    logic signed [9:0]  roll_sensor;
+
     // LEDs da calibracao:
     // 0001 = coloque o sensor reto
     // 0010 = levante a frente
@@ -249,7 +264,32 @@ module top_reticula (
         .eixo_pitch     (eixo_pitch_sensor),
         .eixo_roll      (eixo_roll_sensor),
         .inverte_pitch  (inverte_pitch_sensor),
-        .inverte_roll   (inverte_roll_sensor)
+        .inverte_roll   (inverte_roll_sensor),
+
+        .referencia_x   (referencia_x_sensor),
+        .referencia_y   (referencia_y_sensor),
+        .referencia_z   (referencia_z_sensor)
+    );
+
+    atitude_accel u_atitude_accel (
+        .calibrado      (atitude_calibrada),
+
+        .accel_x        (accel_x_raw),
+        .accel_y        (accel_y_raw),
+        .accel_z        (accel_z_raw),
+
+        .referencia_x   (referencia_x_sensor),
+        .referencia_y   (referencia_y_sensor),
+        .referencia_z   (referencia_z_sensor),
+
+        .eixo_pitch     (eixo_pitch_sensor),
+        .eixo_roll      (eixo_roll_sensor),
+
+        .inverte_pitch  (inverte_pitch_sensor),
+        .inverte_roll   (inverte_roll_sensor),
+
+        .pitch_px       (pitch_sensor),
+        .roll_q8        (roll_sensor)
     );
 
     // -----------------------------------------------------
